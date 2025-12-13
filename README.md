@@ -1,7 +1,5 @@
 # sqlit
 
-A simple terminal UI for SQL Server, for those who just want to run some queries.
-
 ![Python](https://img.shields.io/badge/python-3.10+-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 
@@ -29,15 +27,11 @@ I usually do my work in the terminal, but I found myself either having to boot u
 
 I had the unfortunate situation where doing queries became a pain-point due to the massive operation it is to open SSMS and it's lack of intuitive keyboard only navigation.
 
-The problem got severely worse when I switched to Linux and had to rely on VS CODE's SQL extension to access my SQL database. Something was not right.
+The problem got severely worse when I switched to Linux and had to rely on VS CODE's SQL extension to access my database. Something was not right.
 
 I tried to use some existing TUI's for SQL, but they were not intuitive for me and I missed the immediate ease of use that other TUI's such as Lazygit provides.
 
 sqlit is a lightweight SQL Server TUI that is easy to use and beautiful to look at, just connect and query. It's for you that just wants to run queries toward your database without launching applications that eats your ram and takes time to load up. Sqlit is designed to make it easy and enjoyable to access your data, not painful.
-
-It also comes with a CLI, so you can manage your connections and access your data programmatically.
-
-
 
 
 ## Installation
