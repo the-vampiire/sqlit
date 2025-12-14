@@ -5,7 +5,7 @@ from __future__ import annotations
 from enum import Enum
 
 from textual.app import ComposeResult
-from textual.containers import Horizontal
+from textual.containers import Container, Horizontal
 from textual.widgets import Static
 
 
@@ -74,6 +74,45 @@ class ContextFooter(Horizontal):
         )
         self.query_one("#footer-left", Static).update(left)
         self.query_one("#footer-right", Static).update(right)
+
+
+class Dialog(Container):
+    """A styled modal dialog container with optional border title/subtitle."""
+
+    DEFAULT_CSS = """
+    Dialog {
+        border: solid $primary;
+        background: $surface;
+        padding: 1;
+        height: auto;
+        max-height: 85%;
+        overflow-x: hidden;
+        overflow-y: auto;
+        scrollbar-visibility: hidden;
+
+        border-title-align: left;
+        border-title-color: $text-muted;
+        border-title-background: $surface;
+        border-title-style: bold;
+
+        border-subtitle-align: right;
+        border-subtitle-color: $primary;
+        border-subtitle-background: $surface;
+        border-subtitle-style: bold;
+    }
+    """
+
+    def __init__(
+        self,
+        title: str | None = None,
+        subtitle: str | None = None,
+        **kwargs,
+    ):
+        super().__init__(**kwargs)
+        if title is not None:
+            self.border_title = title
+        if subtitle is not None:
+            self.border_subtitle = subtitle
 
 
 class AutocompleteDropdown(Static):

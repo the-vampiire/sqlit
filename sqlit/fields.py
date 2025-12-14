@@ -41,6 +41,8 @@ class FieldDefinition:
     width: str | int = "full"
     # Group fields on same row
     row_group: str | None = None
+    # Whether the field should be hidden unless advanced mode is enabled
+    advanced: bool = False
 
 
 @dataclass
@@ -74,8 +76,8 @@ def get_common_server_fields(default_port: str, server_placeholder: str = "local
         ),
         FieldDefinition(
             name="database",
-            label="Database (empty = browse all)",
-            placeholder="Leave empty to browse all databases",
+            label="Database",
+            placeholder="(empty = browse all)",
         ),
     ]
 

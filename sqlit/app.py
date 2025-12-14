@@ -1204,7 +1204,8 @@ class SSMSTUI(App):
         right_bindings = [
             KeyBinding("esc", "Cancel", "cancel"),
         ]
-        footer.set_bindings(left_bindings, right_bindings)
+        # Commands are shown in the connection dialog border subtitle.
+        footer.set_bindings([], [])
 
     def _wrap_connection_result(self, result: tuple | None) -> None:
         """Wrapper to restore footer after connection dialog."""

@@ -272,7 +272,7 @@ class SQLServerAdapter(DatabaseAdapter):
                     FieldDefinition(
                         name="server",
                         label="Server",
-                        placeholder="localhost or server\\instance",
+                        placeholder="server\\instance",
                         required=True,
                         row_group="server_port",
                         width="flex",
@@ -287,8 +287,8 @@ class SQLServerAdapter(DatabaseAdapter):
                     ),
                     FieldDefinition(
                         name="database",
-                        label="Database (empty = browse all)",
-                        placeholder="Leave empty to browse all databases",
+                        label="Database",
+                        placeholder="(empty = browse all)",
                     ),
                 ],
             ),
@@ -301,6 +301,7 @@ class SQLServerAdapter(DatabaseAdapter):
                         field_type=FieldType.SELECT,
                         options=driver_options,
                         default="ODBC Driver 18 for SQL Server",
+                        advanced=True,
                     ),
                     FieldDefinition(
                         name="auth_type",
@@ -312,7 +313,7 @@ class SQLServerAdapter(DatabaseAdapter):
                     FieldDefinition(
                         name="username",
                         label="Username",
-                        placeholder="user@domain.com",
+                        placeholder="",
                         visible_when=lambda v: v.get("auth_type") in auth_needs_username,
                         required=True,
                     ),
