@@ -81,6 +81,16 @@ def _user_site_enabled() -> bool:
         return False
 
 
+def _is_arch_linux() -> bool:
+    """Check if running on Arch Linux or derivative."""
+    try:
+        with open("/etc/os-release") as f:
+            content = f.read().lower()
+            return "arch" in content or "manjaro" in content or "endeavouros" in content
+    except (FileNotFoundError, PermissionError):
+        return False
+
+
 def _install_paths_writable() -> bool:
     try:
         paths = sysconfig.get_paths()
@@ -99,19 +109,47 @@ def _install_paths_writable() -> bool:
     return False
 
 
+def _get_arch_package_name(package_name: str) -> str | None:
+    """Map PyPI package name to Arch Linux package name."""
+    mapping = {
+        "psycopg2-binary": "python-psycopg2",
+        "psycopg2": "python-psycopg2",
+        "pyodbc": "python-pyodbc",
+        "mysql-connector-python": "python-mysql-connector",
+        "mariadb": "python-mariadb-connector",
+        "oracledb": "python-oracledb",
+        "duckdb": "python-duckdb",
+        "clickhouse-connect": "python-clickhouse-connect",
+        "snowflake-connector-python": "python-snowflake-connector-python",
+        "requests": "python-requests",
+        "paramiko": "python-paramiko",
+        "sshtunnel": "python-sshtunnel",
+    }
+    return mapping.get(package_name)
+
+
 def _format_manual_instructions(package_name: str, reason: str) -> str:
     """Format manual installation instructions with rich markup."""
-    return (
-        f"{reason}\n\n"
-        f"[bold]Install the driver using your preferred package manager:[/]\n\n"
-        f"  [cyan]pip[/]     pip install {package_name}\n"
-        f"  [cyan]pipx[/]    pipx inject sqlit-tui {package_name}\n"
-        f"  [cyan]uv[/]      uv pip install {package_name}\n"
-        f"  [cyan]uvx[/]     uvx --with {package_name} sqlit-tui\n"
-        f"  [cyan]poetry[/]  poetry add {package_name}\n"
-        f"  [cyan]pdm[/]     pdm add {package_name}\n"
-        f"  [cyan]conda[/]   conda install {package_name}"
-    )
+    lines = [
+        f"{reason}\n",
+        "[bold]Install the driver using your preferred package manager:[/]\n",
+        f"  [cyan]pip[/]     pip install {package_name}",
+        f"  [cyan]pipx[/]    pipx inject sqlit-tui {package_name}",
+        f"  [cyan]uv[/]      uv pip install {package_name}",
+        f"  [cyan]uvx[/]     uvx --with {package_name} sqlit-tui",
+        f"  [cyan]poetry[/]  poetry add {package_name}",
+        f"  [cyan]pdm[/]     pdm add {package_name}",
+        f"  [cyan]conda[/]   conda install {package_name}",
+    ]
+
+    # Add Arch Linux instructions if on Arch
+    if _is_arch_linux():
+        arch_pkg = _get_arch_package_name(package_name)
+        if arch_pkg:
+            lines.append(f"  [cyan]pacman[/]  pacman -S {arch_pkg}")
+            lines.append(f"  [cyan]yay[/]     yay -S {arch_pkg}")
+
+    return "\n".join(lines)
 
 
 def detect_strategy(*, extra_name: str, package_name: str) -> InstallStrategy:
