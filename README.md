@@ -17,11 +17,11 @@
 
 ---
 
-### *Connect*
+### Connect
 Sqlit supports all major DBMS's: SQL Server, PostgreSQL, MySQL, SQLite, MariaDB, FirebirdSQL, Oracle, DuckDB, CockroachDB, ClickHouse, Snowflake, Supabase, CloudFlare D1 and Turso.
 ![Database Providers](demos/demo-providers.gif)
 
-### **Query**
+### Query
 Syntax highlighting. History. VIM-like combos.
 ![Query History](demos/demo-history.gif)
 ### **Results**
@@ -29,7 +29,7 @@ Syntax highlighting. History. VIM-like combos.
 ![Filter results](demos/demo-filter/demo-filter.gif)
 
 ### **Docker discovery**
-Finds running docker sql resources. Connect to your local test servers in seconds without any configuation.
+Finds running docker sql resources. Connect to your local test servers in seconds without any configuration.
 ![Filter results](demos/demo-docker-picker.gif)
 
 
