@@ -1,55 +1,68 @@
-# sqlit
+<p align="center">
+  <img src="assets/favorites/logo.png" alt="sqlit logo" width="200">
+</p>
 
-**The lazygit of SQL databases.** Connect to Postgres, MySQL, SQL Server, SQLite, ClickHouse, FirebirdSQL, Supabase, Turso, and more from your terminal in seconds.
+<h1 align="center">sqlit</h1>
 
-A lightweight TUI for people who just want to run some queries fast.
+<p align="center">
+  <strong>The lazygit of SQL databases.</strong><br>
+  Connect and query your database from your terminal in seconds.
+</p>
 
-![Python](https://img.shields.io/badge/python-3.10+-blue.svg)
-![License](https://img.shields.io/badge/license-MIT-green.svg)
+<p align="center">
+  <img src="https://img.shields.io/badge/python-3.10+-blue.svg" alt="Python">
+  <img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License">
+</p>
 
-### Multi-database Support
+---
+
+### *Connect*
+Sqlit supports all major DBMS's: SQL Server, PostgreSQL, MySQL, SQLite, MariaDB, FirebirdSQL, Oracle, DuckDB, CockroachDB, ClickHouse, Turso and Clickhouse.
 ![Database Providers](demos/demo-providers.gif)
 
-### Query History
+### **Query**
+Syntax highlighting. History. VIM-like combos.
 ![Query History](demos/demo-history.gif)
-**Filter results**
+##### **Results**
+ Inspect data, filter based on content, supports fuzzy search, loads millions of rows without any problem.
 ![Filter results](demos/demo-filter/demo-filter.gif)
 
-**Docker discovery**
+##### **Docker discovery**
+Finds running docker sql resources. Connect to your local test servers in seconds without any configuation.
 ![Filter results](demos/demo-docker-picker.gif)
+
 
 
 ## Features
 
-- **Connection manager UI** - Save connections, switch between databases without CLI args
+- **Connection manager** - Save connections, switch between databases without CLI args
 - **Just run `sqlit`** - No CLI config needed, pick a connection and go
 - **Multi-database out of the box** - SQL Server, PostgreSQL, MySQL, SQLite, MariaDB, FirebirdSQL, Oracle, DuckDB, CockroachDB, ClickHouse, Supabase, Turso - no adapters to install
-- Connect directly to database docker container
+- **Docker** Connect directly to database docker container
 - **SSH tunnels built-in** - Connect to remote databases securely with password or key auth
+- Secure credentials - Stores your credentials on your OS's credentials store
 - **Vim-style editing** - Modal editing for terminal purists
 - **Query history** - Automatically saves queries per connection, searchable and sortable
-- Filter results
-- Context-aware help (no need to memorize keybindings)
-- Browse databases, tables, views, and stored procedures
-- Indexes, Triggers and Sequences
-- SQL autocomplete for tables, columns, and procedures
-- Multiple auth methods (Windows, SQL Server, Entra ID)
-- CLI mode for scripting and AI agents
-- Themes (Tokyo Night, Nord, and more)
-- Auto-detects and installs ODBC drivers (SQL Server)
+- **Filter results** - Find the data you're looking for without squinting your eyes in the results view
+- **Context-aware help** - No need to memorize keybindings
+- **Browse databases** - View tables, views, stored procedures, indexes, triggers and sequences
+- **Autocomplete** - tables, columns, and procedures
+- **CLI mode** - executing sql has never been this easy
+- Themes (Rose Pine, Tokyo Night, Nord, Gruvbox)
+- **Dependency wizard** - User friendly installation for required packages and drivers
 
 
 ## Motivation
-I usually do my work in the terminal, but I found myself either having to boot up massively bloated GUI's like SSMS or Vscode for the simple task of merely browsing my databases and doing some queries toward them. For the vast majority of my use cases, I never used any of the advanced features for inspection and debugging that SSMS and other feature-rich clients provide.
 
-I had the unfortunate situation where doing queries became a pain-point due to the massive operation it is to open SSMS and it's lack of intuitive keyboard only navigation.
+Throughout my career, the undesputed truth was that SSMS was the only respectable way to access a database. It didn't matter that I wasn't a DBA, or that I didn't need complex performance graphs. I was expected to install a gigabyte-heavy behemoth that took ages to launch all for the mere grand purpose trying to navigate this jungle of features of running a few queries, update and view a couple of rows.
 
-The problem got severely worse when I switched to Linux and had to rely on VS CODE's SQL extension to access my database. Something was not right.
+When I switched to Linux, I was suddenly unable to return to the devil I know, and I asked myself: _how do I access my data now?_
 
-I tried to use some existing TUI's for SQL, but they were not intuitive for me and I missed the immediate ease of use that other TUI's such as Lazygit provides.
+The popular answer was VS Code's SQL extension. But why should we developers launch a heavy Electron app designed for coding just to execute SQL? I looked for SQL TUIs, but the options were sparse. The ones I found lacked the user-friendliness and immediate "pick-up-and-go" nature of tools I loved, like `lazygit`, and I shortly returning to vscode sql extension.
 
-sqlit is a lightweight database TUI that is easy to use and beautiful to look at, just connect and query. It's for you that just wants to run queries toward your database without launching applications that eats your ram and takes time to load up. Sqlit supports SQL Server, PostgreSQL, MySQL, SQLite, MariaDB, FirebirdSQL, Oracle, DuckDB, CockroachDB, ClickHouse, Supabase, and Turso, and is designed to make it easy and enjoyable to access your data, not painful.
+Something wasn't right. I asked myself, why is it that running SQL queries can't be enjoyable? So I created `sqlit`.
 
+`sqlit` is for the developer who just wants to query their database with a user friendly UI without their RAM being eaten alive. It is a lightweight, beautiful, and keyboard-driven TUI designed to make accessing your data enjoyable, fast and easy like it should be.
 
 ## Installation
 
@@ -174,7 +187,7 @@ Connections and settings are stored in `~/.sqlit/`.
 
 Connection details are stored in `~/.sqlit/connections.json`, but passwords are stored in your OS keyring when available (macOS Keychain, Windows Credential Locker, Linux Secret Service).
 
-If a keyring backend isn't available, `sqlit` will ask whether to store passwords as plaintext in `~/.sqlit/` (protected permissions). If you decline, you’ll be prompted when needed.
+If a keyring backend isn't available, `sqlit` will ask whether to store passwords as plaintext in `~/.sqlit/` (protected permissions). If you decline, you'll be prompted when needed.
 
 ### How does sqlit compare to Harlequin, Lazysql, etc.?
 

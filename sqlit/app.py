@@ -220,6 +220,18 @@ class SSMSTUI(
         height: 1fr;
     }
 
+    /* FastDataTable header styling */
+    DataTable > .datatable--header {
+        background: $surface-lighten-1;
+        color: $primary;
+        text-style: bold;
+    }
+
+    DataTable:focus > .datatable--header {
+        background: $primary 20%;
+        color: $text;
+    }
+
     /* FastDataTable already has zebra stripes with $primary 10% */
 
     #status-bar {

@@ -46,3 +46,8 @@ sqlit-notifications/
 
 # Integration test artifacts
 tests/integration/python_packages/artifacts/
+
+# Local assets
+assets/
+.worktrees/
+.obsidian/
