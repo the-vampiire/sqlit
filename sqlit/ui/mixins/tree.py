@@ -32,6 +32,12 @@ if TYPE_CHECKING:
 class TreeMixin:
     """Mixin providing tree/explorer functionality."""
 
+    def _run_db_call(self: AppProtocol, fn: Any, *args: Any, **kwargs: Any) -> Any:
+        session = getattr(self, "_session", None)
+        if session is not None:
+            return session.executor.submit(fn, *args, **kwargs).result()
+        return fn(*args, **kwargs)
+
     def _db_type_badge(self, db_type: str) -> str:
         """Get short badge for database type."""
         return get_badge_label(db_type)
@@ -166,7 +172,7 @@ class TreeMixin:
                     dbs_node = active_node.add("Databases")
                     dbs_node.data = FolderNode(folder_type="databases")
 
-                    databases = adapter.get_databases(self.current_connection)
+                    databases = self._run_db_call(adapter.get_databases, self.current_connection)
                     for db_name in databases:
                         db_node = dbs_node.add(escape_markup(db_name))
                         db_node.data = DatabaseNode(name=db_name)
@@ -331,7 +337,7 @@ class TreeMixin:
                 else:
                     adapter = self._session.adapter
                     conn = self._session.connection
-                    columns = adapter.get_columns(conn, obj_name, db_name, schema_name)
+                    columns = self._run_db_call(adapter.get_columns, conn, obj_name, db_name, schema_name)
 
                 # Update UI from worker thread
                 self.call_from_thread(self._on_columns_loaded, node, db_name, schema_name, obj_name, columns)
@@ -377,27 +383,39 @@ class TreeMixin:
                     conn = self._session.connection
 
                     if folder_type == "tables":
-                        items = [("table", s, t) for s, t in adapter.get_tables(conn, db_name)]
+                        items = [("table", s, t) for s, t in self._run_db_call(adapter.get_tables, conn, db_name)]
                     elif folder_type == "views":
-                        items = [("view", s, v) for s, v in adapter.get_views(conn, db_name)]
+                        items = [("view", s, v) for s, v in self._run_db_call(adapter.get_views, conn, db_name)]
                     elif folder_type == "indexes":
                         if adapter.supports_indexes:
-                            items = [("index", i.name, i.table_name) for i in adapter.get_indexes(conn, db_name)]
+                            items = [
+                                ("index", i.name, i.table_name)
+                                for i in self._run_db_call(adapter.get_indexes, conn, db_name)
+                            ]
                         else:
                             items = []
                     elif folder_type == "triggers":
                         if adapter.supports_triggers:
-                            items = [("trigger", t.name, t.table_name) for t in adapter.get_triggers(conn, db_name)]
+                            items = [
+                                ("trigger", t.name, t.table_name)
+                                for t in self._run_db_call(adapter.get_triggers, conn, db_name)
+                            ]
                         else:
                             items = []
                     elif folder_type == "sequences":
                         if adapter.supports_sequences:
-                            items = [("sequence", s.name, "") for s in adapter.get_sequences(conn, db_name)]
+                            items = [
+                                ("sequence", s.name, "")
+                                for s in self._run_db_call(adapter.get_sequences, conn, db_name)
+                            ]
                         else:
                             items = []
                     elif folder_type == "procedures":
                         if adapter.supports_stored_procedures:
-                            items = [("procedure", "", p) for p in adapter.get_procedures(conn, db_name)]
+                            items = [
+                                ("procedure", "", p)
+                                for p in self._run_db_call(adapter.get_procedures, conn, db_name)
+                            ]
                         else:
                             items = []
                     else:

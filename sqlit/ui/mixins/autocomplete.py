@@ -21,6 +21,12 @@ class AutocompleteMixin:
     _schema_cache: dict[str, Any] = {}
     _table_metadata: dict[str, tuple[str, str, str | None]] = {}
 
+    def _run_db_call(self: AppProtocol, fn: Any, *args: Any, **kwargs: Any) -> Any:
+        session = getattr(self, "_session", None)
+        if session is not None:
+            return session.executor.submit(fn, *args, **kwargs).result()
+        return fn(*args, **kwargs)
+
     def _get_word_before_cursor(self, text: str, cursor_pos: int) -> tuple[str, str]:
         """Get the current word being typed and the context keyword before it."""
         if cursor_pos <= 0 or cursor_pos > len(text):
@@ -103,7 +109,9 @@ class AutocompleteMixin:
                 column_names = []
             else:
                 try:
-                    columns = adapter.get_columns(connection, actual_table_name, database, schema_name)
+                    columns = self._run_db_call(
+                        adapter.get_columns, connection, actual_table_name, database, schema_name
+                    )
                     column_names = [c.name for c in columns]
                 except Exception:
                     column_names = []
@@ -362,6 +370,12 @@ class AutocompleteMixin:
         }
         table_metadata: dict[str, tuple[str, str, str | None]] = {}
 
+        async def run_db_call(fn: Any, *args: Any, **kwargs: Any) -> Any:
+            session = getattr(self, "_session", None)
+            if session is not None:
+                return await session.executor.run_async(fn, *args, **kwargs)
+            return await asyncio.to_thread(fn, *args, **kwargs)
+
         try:
             # Get database list in thread
             databases: list[str | None]
@@ -370,7 +384,7 @@ class AutocompleteMixin:
                 if db and db.lower() not in ("", "master"):
                     databases = [db]
                 else:
-                    all_dbs = await asyncio.to_thread(adapter.get_databases, connection)
+                    all_dbs = await run_db_call(adapter.get_databases, connection)
                     system_dbs = {"master", "tempdb", "model", "msdb"}
                     databases = [d for d in all_dbs if d.lower() not in system_dbs]
             else:
@@ -379,7 +393,7 @@ class AutocompleteMixin:
             for database in databases:
                 try:
                     # Get tables in thread (NO columns - lazy loaded)
-                    tables = await asyncio.to_thread(adapter.get_tables, connection, database)
+                    tables = await run_db_call(adapter.get_tables, connection, database)
                     for schema_name, table_name in tables:
                         display_name = adapter.format_table_name(schema_name, table_name)
                         schema_cache["tables"].append(display_name)
@@ -392,7 +406,7 @@ class AutocompleteMixin:
                             table_metadata[full_name.lower()] = (schema_name, table_name, database)
 
                     # Get views in thread (NO columns - lazy loaded)
-                    views = await asyncio.to_thread(adapter.get_views, connection, database)
+                    views = await run_db_call(adapter.get_views, connection, database)
                     for schema_name, view_name in views:
                         display_name = adapter.format_table_name(schema_name, view_name)
                         schema_cache["views"].append(display_name)
@@ -405,7 +419,7 @@ class AutocompleteMixin:
                             table_metadata[full_name.lower()] = (schema_name, view_name, database)
 
                     if adapter.supports_stored_procedures:
-                        procedures = await asyncio.to_thread(adapter.get_procedures, connection, database)
+                        procedures = await run_db_call(adapter.get_procedures, connection, database)
                         schema_cache["procedures"].extend(procedures)
 
                 except Exception:
