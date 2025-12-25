@@ -309,12 +309,7 @@ class QueryMixin:
 
     def _display_query_error(self: AppProtocol, error_message: str) -> None:
         """Display query error (called on main thread)."""
-        self._last_result_columns = ["Error"]
-        self._last_result_rows = [(error_message,)]
-        self._last_result_row_count = 1
-
-        # escape_markup is handled in _replace_results_table
-        self._replace_results_table(["Error"], [(error_message,)])
+        # notify(severity="error") handles displaying the error in results via _show_error_in_results
         self.notify(f"Query error: {error_message}", severity="error")
 
     def _restore_insert_mode(self: AppProtocol) -> None:
