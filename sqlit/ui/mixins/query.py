@@ -145,6 +145,11 @@ class QueryMixin:
         # Clear target database after use - it's only for the auto-generated query
         self._query_target_database = None
 
+        # Apply active database to query execution (from USE statement or 'u' key)
+        active_db = getattr(self, "_active_database", None)
+        if active_db and active_db != config.database and not target_db:
+            config = adapter.apply_database_override(config, active_db)
+
         # Handle USE database statements
         db_name = parse_use_statement(query)
         if db_name is not None:

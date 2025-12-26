@@ -165,7 +165,16 @@ class TreeMixin:
         try:
             if adapter.supports_multiple_databases:
                 specific_db = self.current_config.database
-                if specific_db and specific_db.lower() not in ("", "master"):
+                # For adapters that don't support cross-database queries (PostgreSQL, etc.),
+                # always show the Databases folder so users can switch between databases.
+                # For adapters that do support cross-database queries (SQL Server, MySQL),
+                # show single database view only if a specific database was configured.
+                show_single_db = (
+                    specific_db
+                    and specific_db.lower() not in ("", "master")
+                    and adapter.supports_cross_database_queries
+                )
+                if show_single_db:
                     self._add_database_object_nodes(active_node, specific_db)
                     active_node.expand()
                 else:
@@ -173,7 +182,12 @@ class TreeMixin:
                     dbs_node.data = FolderNode(folder_type="databases")
 
                     databases = self._run_db_call(adapter.get_databases, self.current_connection)
-                    active_db = getattr(self, "_active_database", None)
+                    # For non-cross-db adapters, use config.database as active
+                    # For cross-db adapters, use _active_database
+                    if adapter.supports_cross_database_queries:
+                        active_db = getattr(self, "_active_database", None)
+                    else:
+                        active_db = self.current_config.database
                     for db_name in databases:
                         # Show active database with star and green text
                         if active_db and db_name.lower() == active_db.lower():
@@ -295,6 +309,10 @@ class TreeMixin:
 
         data = node.data
 
+        # When a database node is expanded, ensure we're connected to it
+        if self._get_node_kind(node) == "database":
+            self._ensure_database_connection(data.name)
+
         # Skip if already has children (not just loading placeholder)
         children = list(node.children)
         if children:
@@ -315,6 +333,10 @@ class TreeMixin:
 
         # Handle table/view column expansion
         if self._get_node_kind(node) in ("table", "view"):
+            # Ensure we're connected to the right database before loading
+            target_db = data.database
+            if target_db and not self._ensure_database_connection(target_db):
+                return  # Switch failed
             self._loading_nodes.add(node_path)
             loading_node = node.add_leaf("[dim italic]Loading...[/]")
             loading_node.data = LoadingNode()
@@ -323,6 +345,10 @@ class TreeMixin:
 
         # Handle folder expansion (database can be None for single-db adapters)
         if self._get_node_kind(node) == "folder":
+            # Ensure we're connected to the right database before loading
+            target_db = data.database
+            if target_db and not self._ensure_database_connection(target_db):
+                return  # Switch failed
             self._loading_nodes.add(node_path)
             loading_node = node.add_leaf("[dim italic]Loading...[/]")
             loading_node.data = LoadingNode()
@@ -742,22 +768,123 @@ class TreeMixin:
         if definition:
             self.query_input.text = f"/*\n{definition}\n*/"
 
+    def _ensure_database_connection(self: AppProtocol, target_db: str) -> bool:
+        """Ensure we're connected to the target database, switching if needed.
+
+        For adapters that don't support cross-database queries (PostgreSQL, etc.),
+        this will switch the connection if we're not already connected to the
+        target database.
+
+        Args:
+            target_db: The database name we need to be connected to.
+
+        Returns:
+            True if we're connected to the target database (or adapter supports
+            cross-db queries), False if switch failed.
+        """
+        if not self.current_adapter or not self.current_config:
+            return False
+
+        # For cross-db adapters, try USE approach first (no reconnection needed).
+        # Note: While MSSQL generally supports cross-database queries, some variants
+        # like Azure SQL have restrictions. If USE fails, we fall back to reconnection.
+        if self.current_adapter.supports_cross_database_queries:
+            current_active = getattr(self, "_active_database", None)
+            if not current_active or current_active.lower() != target_db.lower():
+                try:
+                    self.set_default_database(target_db)
+                except Exception:
+                    # USE approach failed - fall back to reconnection
+                    self._reconnect_to_database(target_db)
+            return True
+
+        # For non-cross-db adapters, check if already connected to target database
+        current_db = self.current_config.database
+        if current_db and current_db.lower() == target_db.lower():
+            return True
+
+        # Need to reconnect - set_default_database handles this
+        self.set_default_database(target_db)
+
+        # Verify switch succeeded
+        return (
+            self.current_config.database is not None
+            and self.current_config.database.lower() == target_db.lower()
+        )
+
+    def _reconnect_to_database(self: AppProtocol, db_name: str) -> None:
+        """Reconnect to a different database without re-rendering the tree.
+
+        Used for PostgreSQL and other databases that don't support cross-database
+        queries. Creates a new connection to the specified database while keeping
+        the tree structure intact.
+        """
+        from ...config import set_database_preference
+
+        if not self._session:
+            return
+
+        try:
+            self._session.switch_database(db_name)
+
+            # Update app state to match session
+            self.current_config = self._session.config
+            self.current_connection = self._session.connection
+
+            # Save preference and update UI
+            set_database_preference(self._session.config.name, db_name)
+            self.notify(f"Switched to database: {db_name}")
+            self._update_status_bar()
+            self._update_database_labels()
+
+            # Clear caches and reload schema for autocomplete
+            self._db_object_cache = {}
+            self._load_schema_cache()
+
+        except Exception as e:
+            self.notify(f"Failed to connect to {db_name}: {e}", severity="error")
+
     def set_default_database(self: AppProtocol, db_name: str | None) -> None:
         """Set or clear the active database for the current connection.
 
         This is the shared function used by both the USE query handler and
-        the explorer 'Use as default' action. Sets _active_database (not config.database)
-        so tree structure is preserved.
+        the explorer 'Use as default' action.
+
+        For databases that support cross-database queries (SQL Server, MySQL, etc.),
+        this just sets _active_database so queries use the right context.
+
+        For databases that don't support cross-database queries (PostgreSQL, etc.),
+        this will reconnect to the selected database since each connection is
+        database-specific.
 
         Args:
             db_name: The database name to set as active, or None to clear.
         """
+        from dataclasses import replace
+
         from ...config import set_database_preference
 
-        if not self.current_config:
+        if not self.current_config or not self.current_adapter:
             self.notify("Not connected", severity="error")
             return
 
+        # Check if adapter supports cross-database queries
+        if not self.current_adapter.supports_cross_database_queries and db_name:
+            # For PostgreSQL, CockroachDB, etc. - need to reconnect to the new database
+            # Check if we're already connected to this database
+            current_db = self.current_config.database
+            if current_db and current_db.lower() == db_name.lower():
+                # Already connected to this database, just update UI
+                self._active_database = db_name
+                self._update_status_bar()
+                self._update_database_labels()
+                return
+
+            # Reconnect to the new database without re-rendering the tree
+            self._reconnect_to_database(db_name)
+            return
+
+        # For databases that support cross-database queries, just update the active database
         self._active_database = db_name
         # Cache the preference so it persists across sessions
         set_database_preference(self.current_config.name, db_name)
@@ -772,10 +899,14 @@ class TreeMixin:
 
     def _update_database_labels(self: AppProtocol) -> None:
         """Update database node labels to show the active database with a star."""
-        if not self.current_config:
+        if not self.current_config or not self.current_adapter:
             return
 
-        active_db = getattr(self, "_active_database", None)
+        # For non-cross-db adapters, use config.database; otherwise use _active_database
+        if self.current_adapter.supports_cross_database_queries:
+            active_db = getattr(self, "_active_database", None)
+        else:
+            active_db = self.current_config.database
 
         # Find the Databases folder and update labels
         for conn_node in self.object_tree.root.children:
@@ -793,7 +924,8 @@ class TreeMixin:
                     for db_node in child.children:
                         if self._get_node_kind(db_node) == "database":
                             db_name = db_node.data.name
-                            if active_db and db_name.lower() == active_db.lower():
+                            is_active = active_db and db_name.lower() == active_db.lower()
+                            if is_active:
                                 db_node.set_label(f"[#4ADE80]* {escape_markup(db_name)}[/]")
                             else:
                                 db_node.set_label(escape_markup(db_name))

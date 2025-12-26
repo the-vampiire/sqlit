@@ -306,7 +306,6 @@ class SSMSTUI(
         Binding("z", "collapse_tree", "Collapse", show=False),
         Binding("j", "tree_cursor_down", "Down", show=False),
         Binding("k", "tree_cursor_up", "Up", show=False),
-        Binding("u", "use_database", "Use as default", show=False),
         Binding("v", "view_cell", "View cell", show=False),
         Binding("u", "edit_cell", "Update cell", show=False),
         Binding("h", "results_cursor_left", "Left", show=False),

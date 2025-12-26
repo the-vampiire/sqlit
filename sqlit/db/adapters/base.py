@@ -183,6 +183,22 @@ class DatabaseAdapter(ABC):
         pass
 
     @property
+    def supports_cross_database_queries(self) -> bool:
+        """Whether this database supports cross-database queries.
+
+        When True, queries can reference tables in other databases using
+        fully qualified names (e.g., [db].[schema].[table] in SQL Server).
+
+        When False, each database is isolated and a specific database must
+        be selected before querying. Connection creation will require a
+        database to be specified.
+
+        Defaults to True. Override in subclasses for databases like PostgreSQL
+        where each database is isolated.
+        """
+        return True
+
+    @property
     @abstractmethod
     def supports_stored_procedures(self) -> bool:
         """Whether this database type supports stored procedures."""
@@ -837,6 +853,11 @@ class PostgresBaseAdapter(CursorBasedAdapter):
     @property
     def system_databases(self) -> frozenset[str]:
         return frozenset({"template0", "template1"})
+
+    @property
+    def supports_cross_database_queries(self) -> bool:
+        """PostgreSQL databases are isolated; cross-database queries not supported."""
+        return False
 
     @property
     def default_schema(self) -> str:
