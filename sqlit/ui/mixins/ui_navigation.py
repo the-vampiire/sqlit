@@ -405,19 +405,19 @@ class UINavigationMixin:
 
     def _show_error_in_results(self: AppProtocol, message: str, timestamp: str) -> None:
         """Display error message in the results table."""
-        import textwrap
+        import re
 
         error_text = f"[{timestamp}] {message}" if timestamp else message
 
-        # Wrap to table width (minus some padding), minimum 40 chars
-        wrap_width = max(40, self.results_table.size.width - 4)
-        wrapped = textwrap.fill(error_text, width=wrap_width)
+        # Replace newlines and collapse multiple whitespace to single space
+        # DataTable cells only show one line, so we flatten the error
+        error_text = re.sub(r"\s+", " ", error_text).strip()
 
         self._last_result_columns = ["Error"]
-        self._last_result_rows = [(wrapped,)]
+        self._last_result_rows = [(error_text,)]
         self._last_result_row_count = 1
 
-        self._replace_results_table(["Error"], [(wrapped,)])  # type: ignore[attr-defined]
+        self._replace_results_table(["Error"], [(error_text,)])  # type: ignore[attr-defined]
         self._update_footer_bindings()
 
     def action_toggle_explorer(self: AppProtocol) -> None:
