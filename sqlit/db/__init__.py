@@ -38,7 +38,6 @@ __all__ = [
     "get_all_schemas",
     "get_connection_schema",
     # Adapters (lazy via __getattr__)
-    "AzureSQLAdapter",
     "CockroachDBAdapter",
     "DuckDBAdapter",
     "FirebirdAdapter",
@@ -56,7 +55,6 @@ __all__ = [
 ]
 
 if TYPE_CHECKING:
-    from .adapters.azure_sql import AzureSQLAdapter
     from .adapters.cockroachdb import CockroachDBAdapter
     from .adapters.duckdb import DuckDBAdapter
     from .adapters.firebird import FirebirdAdapter

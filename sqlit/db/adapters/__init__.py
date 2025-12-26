@@ -19,7 +19,6 @@ __all__ = [
     "DatabaseAdapter",
     "TableInfo",
     # Adapter classes (lazy via __getattr__)
-    "AzureSQLAdapter",
     "ClickHouseAdapter",
     "CockroachDBAdapter",
     "DuckDBAdapter",
@@ -38,7 +37,6 @@ __all__ = [
 ]
 
 if TYPE_CHECKING:
-    from .azure_sql import AzureSQLAdapter
     from .clickhouse import ClickHouseAdapter
     from .cockroachdb import CockroachDBAdapter
     from .duckdb import DuckDBAdapter

@@ -484,7 +484,11 @@ class TreeMixin:
                 # Update UI from worker thread
                 self.call_from_thread(self._on_folder_loaded, node, db_name, folder_type, items)
             except Exception as e:
-                self.call_from_thread(self._on_tree_load_error, node, f"Error loading: {e}")
+                # If we have a target database, try reconnecting as fallback (handles Azure SQL etc.)
+                if db_name:
+                    self.call_from_thread(self._fallback_reconnect_and_retry, node, data, db_name, e)
+                else:
+                    self.call_from_thread(self._on_tree_load_error, node, f"Error loading: {e}")
 
         self.run_worker(work, name=f"load-folder-{folder_type}", thread=True, exclusive=False)
 
@@ -589,6 +593,32 @@ class TreeMixin:
                 child.remove()
 
         self.notify(escape_markup(error_message), severity="error")
+
+    def _fallback_reconnect_and_retry(
+        self: AppProtocol, node: Any, data: FolderNode, db_name: str, original_error: Exception
+    ) -> None:
+        """Try reconnecting to database and retry loading. Show original error if this also fails."""
+        node_path = self._get_node_path(node)
+        self._loading_nodes.discard(node_path)
+
+        # Remove loading placeholder
+        for child in list(node.children):
+            if self._get_node_kind(child) == "loading":
+                child.remove()
+
+        # Try to reconnect
+        try:
+            self._reconnect_to_database(db_name)
+        except Exception:
+            # Reconnect failed - show original error
+            self.notify(escape_markup(f"Error loading: {original_error}"), severity="error")
+            return
+
+        # Reconnect succeeded - retry loading
+        self._loading_nodes.add(node_path)
+        loading_node = node.add_leaf("[dim italic]Loading...[/]")
+        loading_node.data = LoadingNode()
+        self._load_folder_async(node, data)
 
     def on_tree_node_selected(self: AppProtocol, event: Tree.NodeSelected) -> None:
         """Handle tree node selection (double-click/enter)."""

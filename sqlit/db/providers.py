@@ -16,7 +16,6 @@ from typing import TYPE_CHECKING
 
 # Pre-import all schemas (no external dependencies)
 from .schema import (
-    AZURE_SQL_SCHEMA,
     CLICKHOUSE_SCHEMA,
     COCKROACHDB_SCHEMA,
     D1_SCHEMA,
@@ -46,10 +45,6 @@ class ProviderSpec:
 
 
 PROVIDERS: dict[str, ProviderSpec] = {
-    "azure_sql": ProviderSpec(
-        schema=AZURE_SQL_SCHEMA,
-        adapter_path=("sqlit.db.adapters.azure_sql", "AzureSQLAdapter"),
-    ),
     "mssql": ProviderSpec(
         schema=MSSQL_SCHEMA,
         adapter_path=("sqlit.db.adapters.mssql", "SQLServerAdapter"),

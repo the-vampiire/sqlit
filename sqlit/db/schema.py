@@ -256,66 +256,6 @@ MSSQL_SCHEMA = ConnectionSchema(
     default_port="1433",
 )
 
-# Azure SQL auth types (subset of MSSQL - no Windows auth)
-_AZURE_SQL_AUTH_NEEDS_USERNAME = {"sql", "ad_password", "ad_interactive"}
-_AZURE_SQL_AUTH_NEEDS_PASSWORD = {"sql", "ad_password"}
-
-
-def _get_azure_sql_auth_options() -> tuple[SelectOption, ...]:
-    return (
-        SelectOption("sql", "SQL Server Authentication"),
-        SelectOption("ad_password", "Azure AD Password"),
-        SelectOption("ad_interactive", "Azure AD Interactive"),
-        SelectOption("ad_integrated", "Azure AD Integrated"),
-    )
-
-
-AZURE_SQL_SCHEMA = ConnectionSchema(
-    db_type="azure_sql",
-    display_name="Azure SQL",
-    fields=(
-        SchemaField(
-            name="server",
-            label="Server",
-            placeholder="server.database.windows.net",
-            required=True,
-            group="server_port",
-        ),
-        _port_field("1433"),
-        SchemaField(
-            name="database",
-            label="Database",
-            placeholder="your-database",
-            required=True,  # Required for Azure SQL - no cross-db queries
-        ),
-        SchemaField(
-            name="auth_type",
-            label="Authentication",
-            field_type=FieldType.DROPDOWN,
-            options=_get_azure_sql_auth_options(),
-            default="sql",
-        ),
-        SchemaField(
-            name="username",
-            label="Username",
-            required=True,
-            group="credentials",
-            visible_when=lambda v: v.get("auth_type") in _AZURE_SQL_AUTH_NEEDS_USERNAME,
-        ),
-        SchemaField(
-            name="password",
-            label="Password",
-            field_type=FieldType.PASSWORD,
-            placeholder="(empty = ask every connect)",
-            group="credentials",
-            visible_when=lambda v: v.get("auth_type") in _AZURE_SQL_AUTH_NEEDS_PASSWORD,
-        ),
-    ),
-    supports_ssh=False,  # Azure SQL is cloud-native, no SSH tunneling
-    has_advanced_auth=True,
-    default_port="1433",
-)
-
 POSTGRESQL_SCHEMA = ConnectionSchema(
     db_type="postgresql",
     display_name="PostgreSQL",
