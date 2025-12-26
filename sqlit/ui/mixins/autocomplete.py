@@ -480,15 +480,24 @@ class AutocompleteMixin:
                             # Single database - use simple table name
                             schema_cache["tables"].append(table_name)
                         else:
-                            # Multiple databases - use full qualifier
-                            full_name = f"{database}.{table_name}" if database else table_name
+                            # Multiple databases - use full qualifier [db].[schema].[table]
+                            quoted_db = adapter.quote_identifier(database) if database else ""
+                            quoted_schema = adapter.quote_identifier(schema_name)
+                            quoted_table = adapter.quote_identifier(table_name)
+                            if database:
+                                full_name = f"{quoted_db}.{quoted_schema}.{quoted_table}"
+                            else:
+                                full_name = f"{quoted_schema}.{quoted_table}"
                             schema_cache["tables"].append(full_name)
-                        # Keep metadata for column loading
+                        # Keep metadata for column loading (multiple keys for flexible lookup)
                         display_name = adapter.format_table_name(schema_name, table_name)
                         table_metadata[display_name.lower()] = (schema_name, table_name, database)
                         table_metadata[table_name.lower()] = (schema_name, table_name, database)
                         if database:
                             table_metadata[f"{database}.{table_name}".lower()] = (schema_name, table_name, database)
+                            # Also store with full quoted name for [db].[schema].[table] lookups
+                            if len(databases) > 1:
+                                table_metadata[full_name.lower()] = (schema_name, table_name, database)
 
                     # Get views
                     views = await run_db_call(adapter.get_views, connection, database)
@@ -498,15 +507,24 @@ class AutocompleteMixin:
                             # Single database - use simple view name
                             schema_cache["views"].append(view_name)
                         else:
-                            # Multiple databases - use full qualifier
-                            full_name = f"{database}.{view_name}" if database else view_name
+                            # Multiple databases - use full qualifier [db].[schema].[view]
+                            quoted_db = adapter.quote_identifier(database) if database else ""
+                            quoted_schema = adapter.quote_identifier(schema_name)
+                            quoted_view = adapter.quote_identifier(view_name)
+                            if database:
+                                full_name = f"{quoted_db}.{quoted_schema}.{quoted_view}"
+                            else:
+                                full_name = f"{quoted_schema}.{quoted_view}"
                             schema_cache["views"].append(full_name)
-                        # Keep metadata for column loading
+                        # Keep metadata for column loading (multiple keys for flexible lookup)
                         display_name = adapter.format_table_name(schema_name, view_name)
                         table_metadata[display_name.lower()] = (schema_name, view_name, database)
                         table_metadata[view_name.lower()] = (schema_name, view_name, database)
                         if database:
                             table_metadata[f"{database}.{view_name}".lower()] = (schema_name, view_name, database)
+                            # Also store with full quoted name for [db].[schema].[view] lookups
+                            if len(databases) > 1:
+                                table_metadata[full_name.lower()] = (schema_name, view_name, database)
 
                     # Get procedures
                     if adapter.supports_stored_procedures:
