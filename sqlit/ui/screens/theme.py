@@ -10,29 +10,44 @@ from textual.widgets.option_list import Option
 
 from ...widgets import Dialog
 
-THEME_LABELS = {
-    "sqlit": "Sqlit",
+# Light themes (listed first)
+LIGHT_THEMES = {
     "sqlit-light": "Sqlit Light",
-    "textual-dark": "Textual Dark",
     "textual-light": "Textual Light",
+    "solarized-light": "Solarized Light",
+    "catppuccin-latte": "Catppuccin Latte",
+    "rose-pine-dawn": "Rose Pine Dawn",
+}
+
+# Dark themes
+DARK_THEMES = {
+    "textual-ansi": "Terminal Default",
+    "sqlit": "Sqlit",
+    "textual-dark": "Textual Dark",
     "nord": "Nord",
     "gruvbox": "Gruvbox",
     "tokyo-night": "Tokyo Night",
-    "solarized-light": "Solarized Light",
     "solarized-dark": "Solarized Dark",
     "monokai": "Monokai",
     "flexoki": "Flexoki",
-    "catppuccin-latte": "Catppuccin Latte",
+    "catppuccin-mocha": "Catppuccin Mocha",
     "rose-pine": "Rose Pine",
     "rose-pine-moon": "Rose Pine Moon",
-    "rose-pine-dawn": "Rose Pine Dawn",
-    "catppuccin-mocha": "Catppuccin Mocha",
     "dracula": "Dracula",
+    "hackerman": "Hackerman",
+    "everforest": "Everforest",
+    "kanagawa": "Kanagawa",
+    "matte-black": "Matte Black",
+    "ristretto": "Ristretto",
+    "osaka-jade": "Osaka Jade",
 }
+
+# Combined for backwards compatibility and building the full list
+THEME_LABELS = {**LIGHT_THEMES, **DARK_THEMES}
 
 
 class ThemeScreen(ModalScreen[str | None]):
-    """Modal screen for theme selection."""
+    """Modal screen for theme selection with live preview."""
 
     BINDINGS = [
         Binding("escape", "cancel", "Cancel"),
@@ -63,34 +78,62 @@ class ThemeScreen(ModalScreen[str | None]):
     def __init__(self, current_theme: str):
         super().__init__()
         self.current_theme = current_theme
+        self._original_theme = current_theme  # Store for restore on cancel
         self._theme_ids: list[str] = []
 
-    def _build_theme_list(self) -> list[tuple[str, str]]:
+    def _build_theme_list(self) -> tuple[list[tuple[str, str]], list[tuple[str, str]]]:
+        """Build categorized theme lists.
+
+        Returns:
+            Tuple of (light_themes, dark_themes) where each is a list of (id, name) tuples.
+        """
         available = set(self.app.available_themes)
-        available.discard("textual-ansi")
-        ordered: list[tuple[str, str]] = []
+        light: list[tuple[str, str]] = []
+        dark: list[tuple[str, str]] = []
         seen: set[str] = set()
 
-        for theme_id, theme_name in THEME_LABELS.items():
+        # Add light themes first
+        for theme_id, theme_name in LIGHT_THEMES.items():
             if theme_id in available:
-                ordered.append((theme_id, theme_name))
+                light.append((theme_id, theme_name))
                 seen.add(theme_id)
 
+        # Add dark themes
+        for theme_id, theme_name in DARK_THEMES.items():
+            if theme_id in available:
+                dark.append((theme_id, theme_name))
+                seen.add(theme_id)
+
+        # Add any unknown themes to dark section
         for theme_id in sorted(available - seen):
             theme_name = " ".join(part.capitalize() for part in theme_id.split("-"))
-            ordered.append((theme_id, theme_name))
+            dark.append((theme_id, theme_name))
 
-        return ordered
+        return light, dark
 
     def compose(self) -> ComposeResult:
         shortcuts = [("Select", "<enter>"), ("Cancel", "<esc>")]
         with Dialog(id="theme-dialog", title="Select Theme", shortcuts=shortcuts):
-            options = []
-            themes = self._build_theme_list()
-            self._theme_ids = [theme_id for theme_id, _ in themes]
-            for theme_id, theme_name in themes:
-                prefix = "> " if theme_id == self.current_theme else "  "
-                options.append(Option(f"{prefix}{theme_name}", id=theme_id))
+            options: list[Option] = []
+            light_themes, dark_themes = self._build_theme_list()
+            self._theme_ids = []
+
+            # Add light themes section
+            if light_themes:
+                options.append(Option("─ Light ─", disabled=True))
+                for theme_id, theme_name in light_themes:
+                    prefix = "> " if theme_id == self.current_theme else "  "
+                    options.append(Option(f"{prefix}{theme_name}", id=theme_id))
+                    self._theme_ids.append(theme_id)
+
+            # Add dark themes section
+            if dark_themes:
+                options.append(Option("─ Dark ─", disabled=True))
+                for theme_id, theme_name in dark_themes:
+                    prefix = "> " if theme_id == self.current_theme else "  "
+                    options.append(Option(f"{prefix}{theme_name}", id=theme_id))
+                    self._theme_ids.append(theme_id)
+
             yield OptionList(*options, id="theme-list")
 
     def on_mount(self) -> None:
@@ -102,6 +145,17 @@ class ThemeScreen(ModalScreen[str | None]):
                 option_list.highlighted = i
                 break
 
+    def on_option_list_option_highlighted(
+        self, event: OptionList.OptionHighlighted
+    ) -> None:
+        """Apply theme live as user browses options."""
+        theme_id = event.option.id
+        if theme_id and theme_id in self.app.available_themes:
+            try:
+                self.app.theme = theme_id
+            except Exception:
+                pass  # Ignore errors during preview
+
     def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
         self.dismiss(event.option.id)
 
@@ -112,4 +166,10 @@ class ThemeScreen(ModalScreen[str | None]):
             self.dismiss(option.id)
 
     def action_cancel(self) -> None:
+        # Restore original theme on cancel
+        if self._original_theme in self.app.available_themes:
+            try:
+                self.app.theme = self._original_theme
+            except Exception:
+                pass
         self.dismiss(None)
