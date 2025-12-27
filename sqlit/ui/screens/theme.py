@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from textual.app import ComposeResult
 from textual.binding import Binding
+from textual.containers import Container
 from textual.screen import ModalScreen
-from textual.widgets import OptionList
+from textual.widgets import Input, OptionList, Static
 from textual.widgets.option_list import Option
 
 from ...widgets import Dialog
@@ -46,12 +47,125 @@ DARK_THEMES = {
 THEME_LABELS = {**LIGHT_THEMES, **DARK_THEMES}
 
 
+class CustomThemeScreen(ModalScreen[str | None]):
+    """Modal screen for adding a custom theme by name."""
+
+    BINDINGS = [
+        Binding("escape", "cancel", "Cancel"),
+        Binding("enter", "submit", "Add", show=False),
+    ]
+
+    CSS = """
+    CustomThemeScreen {
+        align: center middle;
+        background: transparent;
+    }
+
+    #custom-theme-dialog {
+        width: 60;
+        height: auto;
+        max-height: 14;
+    }
+
+    #custom-theme-description {
+        margin-bottom: 1;
+        color: $text-muted;
+        height: auto;
+    }
+
+    #custom-theme-container {
+        border: solid $panel;
+        background: $surface;
+        padding: 0;
+        margin-top: 0;
+        height: 3;
+        border-title-align: left;
+        border-title-color: $text-muted;
+        border-title-background: $surface;
+        border-title-style: none;
+    }
+
+    #custom-theme-container.focused {
+        border: solid $primary;
+        border-title-color: $primary;
+    }
+
+    #custom-theme-container Input {
+        border: none;
+        height: 1;
+        padding: 0;
+        background: $surface;
+    }
+
+    #custom-theme-container Input:focus {
+        border: none;
+        background-tint: $foreground 5%;
+    }
+    """
+
+    def __init__(self, *, initial_name: str = ""):
+        super().__init__()
+        self.initial_name = initial_name
+
+    def compose(self) -> ComposeResult:
+        shortcuts = [("Add", "<enter>"), ("Cancel", "<esc>")]
+        with Dialog(id="custom-theme-dialog", title="Add Theme", shortcuts=shortcuts):
+            yield Static(
+                "Enter theme name (template created in ~/.slit/themes/<name>.json):",
+                id="custom-theme-description",
+            )
+            container = Container(id="custom-theme-container")
+            container.border_title = "Theme Name"
+            with container:
+                yield Input(
+                    value=self.initial_name,
+                    placeholder="my-theme",
+                    id="custom-theme-input",
+                )
+
+    def on_mount(self) -> None:
+        self.query_one("#custom-theme-input", Input).focus()
+
+    def on_input_submitted(self, event: Input.Submitted) -> None:
+        if event.input.id == "custom-theme-input":
+            value = event.value.strip()
+            self.dismiss(value or None)
+
+    def on_descendant_focus(self, event) -> None:
+        try:
+            container = self.query_one("#custom-theme-container")
+            container.add_class("focused")
+        except Exception:
+            pass
+
+    def on_descendant_blur(self, event) -> None:
+        try:
+            container = self.query_one("#custom-theme-container")
+            container.remove_class("focused")
+        except Exception:
+            pass
+
+    def action_submit(self) -> None:
+        value = self.query_one("#custom-theme-input", Input).value.strip()
+        self.dismiss(value or None)
+
+    def action_cancel(self) -> None:
+        self.dismiss(None)
+
+    def check_action(self, action: str, parameters: tuple) -> bool | None:
+        if self.app.screen is not self:
+            return False
+        return super().check_action(action, parameters)
+
+
 class ThemeScreen(ModalScreen[str | None]):
     """Modal screen for theme selection with live preview."""
 
     BINDINGS = [
         Binding("escape", "cancel", "Cancel"),
         Binding("enter", "select_option", "Select"),
+        Binding("n", "new_theme", "New"),
+        Binding("e", "edit_theme", "Edit"),
     ]
 
     CSS = """
@@ -79,18 +193,33 @@ class ThemeScreen(ModalScreen[str | None]):
         super().__init__()
         self.current_theme = current_theme
         self._original_theme = current_theme  # Store for restore on cancel
-        self._theme_ids: list[str] = []
 
-    def _build_theme_list(self) -> tuple[list[tuple[str, str]], list[tuple[str, str]]]:
+    def _format_theme_label(self, theme_id: str) -> str:
+        return THEME_LABELS.get(theme_id) or " ".join(part.capitalize() for part in theme_id.split("-"))
+
+    def _build_theme_list(
+        self,
+    ) -> tuple[list[tuple[str, str]], list[tuple[str, str]], list[tuple[str, str]]]:
         """Build categorized theme lists.
 
         Returns:
-            Tuple of (light_themes, dark_themes) where each is a list of (id, name) tuples.
+            Tuple of (custom_themes, light_themes, dark_themes) where each is a list of (id, name) tuples.
         """
         available = set(self.app.available_themes)
+        custom: list[tuple[str, str]] = []
         light: list[tuple[str, str]] = []
         dark: list[tuple[str, str]] = []
         seen: set[str] = set()
+
+        # Add custom themes first
+        try:
+            custom_ids = sorted(self.app.get_custom_theme_names())
+        except Exception:
+            custom_ids = []
+        for theme_id in custom_ids:
+            if theme_id in available:
+                custom.append((theme_id, self._format_theme_label(theme_id)))
+                seen.add(theme_id)
 
         # Add light themes first
         for theme_id, theme_name in LIGHT_THEMES.items():
@@ -106,17 +235,22 @@ class ThemeScreen(ModalScreen[str | None]):
 
         # Add any unknown themes to dark section
         for theme_id in sorted(available - seen):
-            theme_name = " ".join(part.capitalize() for part in theme_id.split("-"))
-            dark.append((theme_id, theme_name))
+            dark.append((theme_id, self._format_theme_label(theme_id)))
 
-        return light, dark
+        return custom, light, dark
 
     def compose(self) -> ComposeResult:
-        shortcuts = [("Select", "<enter>"), ("Cancel", "<esc>")]
+        shortcuts = [("New", "n"), ("Edit", "e"), ("Select", "<enter>"), ("Cancel", "<esc>")]
         with Dialog(id="theme-dialog", title="Select Theme", shortcuts=shortcuts):
             options: list[Option] = []
-            light_themes, dark_themes = self._build_theme_list()
-            self._theme_ids = []
+            custom_themes, light_themes, dark_themes = self._build_theme_list()
+
+            # Add custom themes section
+            if custom_themes:
+                options.append(Option("─ Custom ─", disabled=True))
+                for theme_id, theme_name in custom_themes:
+                    prefix = "> " if theme_id == self.current_theme else "  "
+                    options.append(Option(f"{prefix}{theme_name}", id=theme_id))
 
             # Add light themes section
             if light_themes:
@@ -124,7 +258,6 @@ class ThemeScreen(ModalScreen[str | None]):
                 for theme_id, theme_name in light_themes:
                     prefix = "> " if theme_id == self.current_theme else "  "
                     options.append(Option(f"{prefix}{theme_name}", id=theme_id))
-                    self._theme_ids.append(theme_id)
 
             # Add dark themes section
             if dark_themes:
@@ -132,7 +265,6 @@ class ThemeScreen(ModalScreen[str | None]):
                 for theme_id, theme_name in dark_themes:
                     prefix = "> " if theme_id == self.current_theme else "  "
                     options.append(Option(f"{prefix}{theme_name}", id=theme_id))
-                    self._theme_ids.append(theme_id)
 
             yield OptionList(*options, id="theme-list")
 
@@ -140,10 +272,39 @@ class ThemeScreen(ModalScreen[str | None]):
         option_list = self.query_one("#theme-list", OptionList)
         option_list.focus()
         # Highlight current theme
-        for i, theme_id in enumerate(self._theme_ids):
-            if theme_id == self.current_theme:
-                option_list.highlighted = i
-                break
+        self._highlight_current_theme(option_list)
+
+    def _highlight_current_theme(self, option_list: OptionList) -> None:
+        try:
+            option_list.highlighted = option_list.get_option_index(self.current_theme)
+        except Exception:
+            pass
+
+    def _rebuild_options(self) -> None:
+        option_list = self.query_one("#theme-list", OptionList)
+        options: list[Option] = []
+        custom_themes, light_themes, dark_themes = self._build_theme_list()
+
+        if custom_themes:
+            options.append(Option("─ Custom ─", disabled=True))
+            for theme_id, theme_name in custom_themes:
+                prefix = "> " if theme_id == self.current_theme else "  "
+                options.append(Option(f"{prefix}{theme_name}", id=theme_id))
+
+        if light_themes:
+            options.append(Option("─ Light ─", disabled=True))
+            for theme_id, theme_name in light_themes:
+                prefix = "> " if theme_id == self.current_theme else "  "
+                options.append(Option(f"{prefix}{theme_name}", id=theme_id))
+
+        if dark_themes:
+            options.append(Option("─ Dark ─", disabled=True))
+            for theme_id, theme_name in dark_themes:
+                prefix = "> " if theme_id == self.current_theme else "  "
+                options.append(Option(f"{prefix}{theme_name}", id=theme_id))
+
+        option_list.set_options(options)
+        self._highlight_current_theme(option_list)
 
     def on_option_list_option_highlighted(
         self, event: OptionList.OptionHighlighted
@@ -164,6 +325,45 @@ class ThemeScreen(ModalScreen[str | None]):
         if option_list.highlighted is not None:
             option = option_list.get_option_at_index(option_list.highlighted)
             self.dismiss(option.id)
+
+    def action_new_theme(self) -> None:
+        def on_theme_name_selected(name: str | None) -> None:
+            if not name:
+                return
+            try:
+                theme_name = self.app.add_custom_theme(name)
+            except Exception as exc:
+                from .error import ErrorScreen
+
+                self.app.push_screen(ErrorScreen("Theme Load Failed", str(exc)))
+                return
+
+            self.current_theme = theme_name
+            try:
+                self.app.theme = theme_name
+            except Exception:
+                pass
+            self._rebuild_options()
+
+        self.app.push_screen(CustomThemeScreen(), on_theme_name_selected)
+
+    def action_edit_theme(self) -> None:
+        option_list = self.query_one("#theme-list", OptionList)
+        if option_list.highlighted is None:
+            return
+        try:
+            option = option_list.get_option_at_index(option_list.highlighted)
+        except Exception:
+            return
+        theme_id = option.id
+        if not theme_id or option.disabled:
+            return
+        try:
+            self.app.open_custom_theme_in_editor(theme_id)
+        except Exception as exc:
+            from .error import ErrorScreen
+
+            self.app.push_screen(ErrorScreen("Theme Edit Failed", str(exc)))
 
     def action_cancel(self) -> None:
         # Restore original theme on cancel
