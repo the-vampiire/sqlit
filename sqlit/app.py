@@ -338,7 +338,8 @@ class SSMSTUI(
             panel="#073642",
             dark=True,
             variables={
-                "border": "#073642",
+                "border": "#586e75",
+                "border-blurred": "#2f4a52",
                 "button-color-foreground": "#fdf6e3",
                 "footer-background": "#268bd2",
                 "footer-key-foreground": "#fdf6e3",
@@ -427,8 +428,38 @@ class SSMSTUI(
         ),
     ]
 
+    _LIGHT_THEME_NAMES = {
+        "sqlit-light",
+        "textual-light",
+        "solarized-light",
+        "catppuccin-latte",
+        "rose-pine-dawn",
+    }
+
     # Custom TextArea themes for SQL syntax highlighting (no background colors - inherits from app theme)
     _SQLIT_TEXTAREA_THEMES: dict[str, TextAreaTheme] = {
+        "sqlit-light": TextAreaTheme(
+            name="sqlit-light",
+            syntax_styles={
+                "keyword": Style(color="#D73A49", bold=True),
+                "keyword.operator": Style(color="#D73A49"),
+                "string": Style(color="#032F62"),
+                "string.special": Style(color="#032F62"),
+                "comment": Style(color="#6A737D", italic=True),
+                "number": Style(color="#005CC5"),
+                "float": Style(color="#005CC5"),
+                "operator": Style(color="#D73A49"),
+                "punctuation": Style(color="#24292E"),
+                "punctuation.bracket": Style(color="#24292E"),
+                "punctuation.delimiter": Style(color="#24292E"),
+                "function": Style(color="#6F42C1"),
+                "function.call": Style(color="#6F42C1"),
+                "type": Style(color="#005CC5"),
+                "variable": Style(color="#24292E"),
+                "constant": Style(color="#005CC5"),
+                "identifier": Style(color="#24292E"),
+            },
+        ),
         "hackerman": TextAreaTheme(
             name="hackerman",
             syntax_styles={
@@ -1127,6 +1158,10 @@ class SSMSTUI(
         try:
             if theme_name in self._SQLIT_TEXTAREA_THEMES:
                 self.query_input.theme = theme_name
+            elif theme_name in self._LIGHT_THEME_NAMES:
+                self.query_input.theme = "sqlit-light"
+            else:
+                self.query_input.theme = "css"
         except Exception:
             pass  # Ignore errors during theme application
 
@@ -1135,7 +1170,7 @@ class SSMSTUI(
 
         Strategy:
         1. If Omarchy is installed, try to match the Omarchy theme to a Textual theme
-        2. If a match is found, use it and start watching for changes
+        2. If a match is found and no user override is saved, use it and start watching for changes
         3. If no match or Omarchy not installed, use saved theme or default
         """
         saved_theme = settings.get("theme")
@@ -1149,6 +1184,14 @@ class SSMSTUI(
         # Omarchy is installed - match theme and start watcher
         matched_theme = get_matching_textual_theme(self.available_themes)
         self._omarchy_last_theme_name = get_current_theme_name()
+        if (
+            isinstance(saved_theme, str)
+            and saved_theme in self.available_themes
+            and saved_theme != matched_theme
+        ):
+            self._apply_theme_safe(saved_theme)
+            return
+
         self._apply_theme_safe(matched_theme)
         self._start_omarchy_watcher()
 
