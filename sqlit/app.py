@@ -17,7 +17,9 @@ from textual.containers import Container, Horizontal, Vertical
 from textual.lazy import Lazy
 from textual.screen import ModalScreen
 from textual.timer import Timer
-from textual.widgets import Static, TextArea, Tree
+from textual.widgets import Static, Tree
+
+from .widgets import QueryTextArea
 from textual.worker import Worker
 
 from .config import (
@@ -51,6 +53,7 @@ from .widgets import (
     TreeFilterInput,
     VimMode,
 )
+from .idle_scheduler import init_idle_scheduler, on_user_activity, IdleScheduler
 
 
 class SSMSTUI(
@@ -208,6 +211,17 @@ class SSMSTUI(
         padding: 0 1;
     }
 
+    #idle-scheduler-bar {
+        height: 1;
+        background: $primary-darken-3;
+        padding: 0 1;
+        display: none;
+    }
+
+    #idle-scheduler-bar.visible {
+        display: block;
+    }
+
     #sidebar,
     #query-area,
     #results-area {
@@ -260,7 +274,6 @@ class SSMSTUI(
         Binding("z", "collapse_tree", "Collapse", show=False),
         Binding("j", "tree_cursor_down", "Down", show=False),
         Binding("k", "tree_cursor_up", "Up", show=False),
-        Binding("u", "use_database", "Use as default", show=False),
         Binding("v", "view_cell", "View cell", show=False),
         Binding("u", "edit_cell", "Update cell", show=False),
         Binding("h", "results_cursor_left", "Left", show=False),
@@ -297,6 +310,7 @@ class SSMSTUI(
         self._startup_connection = startup_connection
         self._startup_connect_config: ConnectionConfig | None = None
         self._debug_mode = os.environ.get("SQLIT_DEBUG") == "1"
+        self._debug_idle_scheduler = os.environ.get("SQLIT_DEBUG_IDLE_SCHEDULER") == "1"
         self._startup_profile = os.environ.get("SQLIT_PROFILE_STARTUP") == "1"
         self._startup_mark = self._parse_startup_mark(os.environ.get("SQLIT_STARTUP_MARK"))
         self._startup_init_time = time.perf_counter()
@@ -355,7 +369,9 @@ class SSMSTUI(
         self._state_machine = UIStateMachine()
         self._session_factory: Any | None = None
         self._last_query_table: dict | None = None
-        # Omarchy theme sync state
+        self._query_target_database: str | None = None  # Target DB for auto-generated queries
+        # Idle scheduler for background work
+        self._idle_scheduler: IdleScheduler | None = None
 
         if mock_profile:
             self._session_factory = self._create_mock_session_factory(mock_profile)
@@ -387,8 +403,8 @@ class SSMSTUI(
         return self.query_one("#object-tree", Tree)
 
     @property
-    def query_input(self) -> TextArea:
-        return self.query_one("#query-input", TextArea)
+    def query_input(self) -> QueryTextArea:
+        return self.query_one("#query-input", QueryTextArea)
 
     @property
     def results_table(self) -> SqlitDataTable:
@@ -415,6 +431,10 @@ class SSMSTUI(
     @property
     def status_bar(self) -> Static:
         return self.query_one("#status-bar", Static)
+
+    @property
+    def idle_scheduler_bar(self) -> Static:
+        return self.query_one("#idle-scheduler-bar", Static)
 
     @property
     def autocomplete_dropdown(self) -> Any:
@@ -509,7 +529,7 @@ class SSMSTUI(
 
                 with Vertical(id="main-panel"):
                     with Container(id="query-area"):
-                        yield TextArea(
+                        yield QueryTextArea(
                             "",
                             language="sql",
                             id="query-input",
@@ -521,6 +541,7 @@ class SSMSTUI(
                         yield ResultsFilterInput(id="results-filter")
                         yield Lazy(SqlitDataTable(id="results-table", zebra_stripes=True, show_header=False))
 
+            yield Static("", id="idle-scheduler-bar")
             yield Static("Not connected", id="status-bar")
 
         yield ContextFooter()
@@ -530,6 +551,15 @@ class SSMSTUI(
         """Initialize the app."""
         self._startup_stamp("on_mount_start")
         self._restart_argv = self._compute_restart_argv()
+
+        # Initialize and start idle scheduler
+        self._idle_scheduler = init_idle_scheduler(self)
+        self._idle_scheduler.start()
+
+        # Show idle scheduler debug bar if enabled
+        if self._debug_idle_scheduler:
+            self.idle_scheduler_bar.add_class("visible")
+            self._idle_scheduler_bar_timer = self.set_interval(0.1, self._update_idle_scheduler_bar)
 
         self._theme_manager.register_builtin_themes()
         self._theme_manager.register_textarea_themes()
