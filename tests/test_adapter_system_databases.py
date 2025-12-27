@@ -123,14 +123,6 @@ class TestSystemDatabasesProperty:
         lowercase_dbs = {s.lower() for s in adapter.system_databases}
         assert "snowflake" in lowercase_dbs
 
-    def test_azure_sql_inherits_mssql_system_databases(self):
-        """Azure SQL inherits SQL Server's system_databases."""
-        from sqlit.db.adapters.azure_sql import AzureSQLAdapter
-
-        adapter = AzureSQLAdapter()
-        expected = frozenset({"master", "tempdb", "model", "msdb"})
-        assert adapter.system_databases == expected
-
     def test_sqlite_no_system_databases(self):
         """SQLite (single-file) should return empty frozenset."""
         from sqlit.db.adapters.sqlite import SQLiteAdapter

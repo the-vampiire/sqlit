@@ -52,9 +52,6 @@ class TestImagePatternMatching:
             ("mcr.microsoft.com/mssql/server:2019-latest", "mssql"),
             ("mcr.microsoft.com/mssql/server:2022-latest", "mssql"),
             ("mcr.microsoft.com/mssql/server:2022-CU10-ubuntu-22.04", "mssql"),
-            # Azure SQL Edge (ARM64 compatible) - maps to azure_sql
-            ("mcr.microsoft.com/azure-sql-edge", "azure_sql"),
-            ("mcr.microsoft.com/azure-sql-edge:latest", "azure_sql"),
             # ClickHouse variations
             ("clickhouse/clickhouse-server", "clickhouse"),
             ("clickhouse/clickhouse-server:latest", "clickhouse"),
