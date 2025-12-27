@@ -244,21 +244,3 @@ def get_source_emoji(source: str | None) -> str:
     if source is None:
         return ""
     return SOURCE_EMOJIS.get(source, "")
-
-
-def get_database_preference(connection_name: str) -> str | None:
-    """Get the cached default database preference for a connection."""
-    settings = load_settings()
-    prefs = settings.get("database_preferences", {})
-    return prefs.get(connection_name)
-
-
-def set_database_preference(connection_name: str, database: str | None) -> None:
-    """Cache the default database preference for a connection."""
-    settings = load_settings()
-    prefs = settings.setdefault("database_preferences", {})
-    if database:
-        prefs[connection_name] = database
-    elif connection_name in prefs:
-        del prefs[connection_name]
-    save_settings(settings)

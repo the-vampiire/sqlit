@@ -198,8 +198,6 @@ class ConnectionMixin:
             return create_session(config)
 
         def on_success(session: ConnectionSession) -> None:
-            from ...config import get_database_preference
-
             # Ignore if a newer connection attempt was started
             if attempt_id != self._connection_attempt_id:
                 session.close()
@@ -214,20 +212,8 @@ class ConnectionMixin:
             self.current_ssh_tunnel = session.tunnel
             is_saved = any(c.name == config.name for c in self.connections)
             self._direct_connection_config = None if is_saved else config
-
-            # Load cached active database preference (separate from config.database)
+            self._active_database = None
             reconnected = False
-            self._active_database = get_database_preference(config.name)
-            if (
-                self._active_database
-                and self.current_adapter
-                and not self.current_adapter.supports_cross_database_queries
-            ):
-                current_db = self.current_config.database
-                if not current_db or current_db.lower() != self._active_database.lower():
-                    if hasattr(self, "_reconnect_to_database"):
-                        self._reconnect_to_database(self._active_database)
-                        reconnected = True
 
             self.refresh_tree()
             self.call_after_refresh(self._select_connected_node)

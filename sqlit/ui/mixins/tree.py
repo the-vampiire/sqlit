@@ -165,15 +165,9 @@ class TreeMixin:
         try:
             if adapter.supports_multiple_databases:
                 specific_db = self.current_config.database
-                # For adapters that don't support cross-database queries (PostgreSQL, etc.),
-                # always show the Databases folder so users can switch between databases.
-                # For adapters that do support cross-database queries (SQL Server, MySQL),
-                # show single database view only if a specific database was configured.
-                show_single_db = (
-                    specific_db
-                    and specific_db.lower() not in ("", "master")
-                    and adapter.supports_cross_database_queries
-                )
+                # Show a single database view when a specific database was configured.
+                # Otherwise, show the Databases folder to browse all databases.
+                show_single_db = specific_db and specific_db.lower() not in ("", "master")
                 if show_single_db:
                     self._add_database_object_nodes(active_node, specific_db)
                     active_node.expand()
@@ -864,8 +858,6 @@ class TreeMixin:
         queries. Creates a new connection to the specified database while keeping
         the tree structure intact.
         """
-        from ...config import set_database_preference
-
         if not self._session:
             return
 
@@ -879,8 +871,7 @@ class TreeMixin:
             self.current_config = self._session.config
             self.current_connection = self._session.connection
 
-            # Save preference and update UI
-            set_database_preference(self._session.config.name, db_name)
+            # Update UI
             self.notify(f"Switched to database: {db_name}")
             self._update_status_bar()
             self._update_database_labels()
@@ -908,10 +899,6 @@ class TreeMixin:
         Args:
             db_name: The database name to set as active, or None to clear.
         """
-        from dataclasses import replace
-
-        from ...config import set_database_preference
-
         if not self.current_config or not self.current_adapter:
             self.notify("Not connected", severity="error")
             return
@@ -937,8 +924,6 @@ class TreeMixin:
 
         # For databases that support cross-database queries, just update the active database
         self._active_database = db_name
-        # Cache the preference so it persists across sessions
-        set_database_preference(self.current_config.name, db_name)
         if db_name:
             self.notify(f"Switched to database: {db_name}")
         else:
