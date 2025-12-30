@@ -9,12 +9,13 @@ if TYPE_CHECKING:
     from textual.screen import Screen
     from textual.timer import Timer
     from textual.widget import Widget
-    from textual.widgets import Static, TextArea, Tree
+    from textual.widgets import DataTable, Static, TextArea, Tree
     from textual.worker import Worker
     from sqlit.domains.connections.app.session import ConnectionSession
     from sqlit.domains.connections.domain.config import ConnectionConfig
     from sqlit.domains.connections.providers.adapters.base import DatabaseAdapter
     from sqlit.domains.query.app.query_service import QueryService
+    from sqlit.shared.ui.spinner import Spinner
     from sqlit.shared.ui.widgets import SqlitDataTable, VimMode
 
 QueryType = TypeVar("QueryType", bound="Widget")
@@ -75,6 +76,10 @@ class AppProtocol(Protocol):
 
     def call_from_thread(self, callback: Callable[..., Any], *args: Any, **kwargs: Any) -> Any:
         """Call a function from a worker thread on the main thread."""
+        ...
+
+    def call_after_refresh(self, callback: Callable[[], Any]) -> None:
+        """Call a function after the next screen refresh."""
         ...
 
     def set_timer(
@@ -206,15 +211,32 @@ class AppProtocol(Protocol):
         """The results filter input widget."""
         ...
 
+    @property
+    def results_area(self) -> Any:
+        """The results container widget."""
+        ...
+
+    # === Metadata helpers ===
+
+    def _get_effective_database(self) -> str | None:
+        """Return the active database name for metadata lookups."""
+        ...
+
+    def _get_metadata_db_arg(self, database: str | None) -> str | None:
+        """Normalize metadata database argument for queries."""
+        ...
+
     # === Connection state ===
 
     connections: list[ConnectionConfig]
-    current_connection: Any
+    current_connection: Any | None
     current_config: ConnectionConfig | None
     current_adapter: DatabaseAdapter | None
     current_ssh_tunnel: Any
     _direct_connection_config: ConnectionConfig | None
     _connecting_config: ConnectionConfig | None
+    _connection_attempt_id: int
+    _connect_spinner: Spinner | None
     _connect_spinner_index: int
     _connect_spinner_timer: Timer | None
 
@@ -232,6 +254,14 @@ class AppProtocol(Protocol):
 
     _expanded_paths: set[str]
     _loading_nodes: set[str]
+    _tree_filter_visible: bool
+    _tree_filter_text: str
+    _tree_filter_query: str
+    _tree_filter_fuzzy: bool
+    _tree_filter_typing: bool
+    _tree_filter_matches: list[Any]
+    _tree_filter_match_index: int
+    _tree_original_labels: dict[int, str]
 
     # === Query execution state ===
 
@@ -240,7 +270,9 @@ class AppProtocol(Protocol):
     _query_start_time: float
     _spinner_index: int
     _spinner_timer: Timer | None
-    _cancellable_query: Any
+    _cancellable_query: Any | None
+    _query_spinner: Spinner | None
+    _query_cursor_cache: dict[str, tuple[int, int]] | None
 
     # === Schema cache state ===
 
@@ -251,12 +283,21 @@ class AppProtocol(Protocol):
     _schema_spinner_timer: Timer | None
     _table_metadata: dict[str, tuple[str, str, str | None]]
     _columns_loading: set[str]
+    _schema_spinner: Spinner | None
+    _schema_pending_dbs: list[str | None]
+    _schema_total_jobs: int
+    _schema_completed_jobs: int
+    _schema_scheduler: Any
+    _db_object_cache: dict[str, dict[str, list[Any]]]
 
     # === Autocomplete state ===
 
     _autocomplete_filter: str
     _autocomplete_just_applied: bool
     _autocomplete_visible: bool
+    _suppress_autocomplete_on_newline: bool
+    _autocomplete_debounce_timer: Timer | None
+    _text_just_changed: bool
 
     # === Results state ===
 
@@ -266,6 +307,18 @@ class AppProtocol(Protocol):
     _internal_clipboard: str
     _last_query_table: dict[str, Any] | None
     _results_table_counter: int
+    _results_filter_visible: bool
+    _results_filter_text: str
+    _results_filter_matches: list[int]
+    _results_filter_match_index: int
+    _results_filter_original_rows: list[tuple[Any, ...]]
+    _results_filter_matching_rows: list[tuple[Any, ...]]
+    _results_filter_fuzzy: bool
+    _results_filter_debounce_timer: Timer | None
+    _results_filter_pending_update: bool
+    _tooltip_cell_coord: tuple[int, int] | None
+    _tooltip_showing: bool
+    MAX_FILTER_MATCHES: int
 
     # === UI state ===
 
@@ -277,8 +330,12 @@ class AppProtocol(Protocol):
     _notification_history: list[tuple[str, str, str]]
     _leader_timer: Timer | None
     _leader_pending: bool
+    _last_active_pane: str | None
     _state_machine: Any
     _mock_profile: Any
+    _active_database: str | None
+    _query_target_database: str | None
+    log: Any
 
     # === SSMSTUI methods that mixins call on each other ===
 
@@ -298,12 +355,28 @@ class AppProtocol(Protocol):
         """Update footer with context-appropriate bindings."""
         ...
 
+    def _update_connecting_indicator(self) -> None:
+        """Update UI to reflect connecting state."""
+        ...
+
+    def _set_connecting_state(self, config: ConnectionConfig | None, refresh: bool = True) -> None:
+        """Update connection-in-progress state."""
+        ...
+
+    def _select_connected_node(self) -> None:
+        """Select the tree node for the active connection."""
+        ...
+
     def _hide_autocomplete(self) -> None:
         """Hide the autocomplete dropdown."""
         ...
 
     def _load_schema_cache(self) -> None:
         """Load database schema for autocomplete asynchronously."""
+        ...
+
+    def _load_schema_directly(self) -> None:
+        """Load schema using threaded workers."""
         ...
 
     def _stop_schema_spinner(self) -> None:
@@ -328,8 +401,56 @@ class AppProtocol(Protocol):
         """Get short badge for database type."""
         ...
 
+    def _format_connection_label(self, conn: Any, status: str, spinner: str | None = None) -> str:
+        """Format a connection label for the tree."""
+        ...
+
+    def _connect_spinner_frame(self) -> str:
+        """Get the current connection spinner frame."""
+        ...
+
+    def _get_node_kind(self, node: Any) -> str:
+        """Get node kind string."""
+        ...
+
     def _add_database_object_nodes(self, node: Any, database: str | None) -> None:
         """Add database object nodes (tables, views, etc.) to a folder."""
+        ...
+
+    def _ensure_database_connection(self, target_db: str) -> bool:
+        """Ensure connection is switched to target database."""
+        ...
+
+    def _fallback_reconnect_and_retry(self, node: Any, action: Callable[[], None]) -> None:
+        """Reconnect and retry an action."""
+        ...
+
+    def _reconnect_to_database(self, db_name: str) -> None:
+        """Reconnect to a specific database."""
+        ...
+
+    def _update_database_labels(self) -> None:
+        """Update database labels in the tree."""
+        ...
+
+    def set_default_database(self, db_name: str | None) -> None:
+        """Set the default database for the connection."""
+        ...
+
+    def _show_index_info(self, data: Any) -> None:
+        """Show index details."""
+        ...
+
+    def _show_trigger_info(self, data: Any) -> None:
+        """Show trigger details."""
+        ...
+
+    def _show_sequence_info(self, data: Any) -> None:
+        """Show sequence details."""
+        ...
+
+    def _display_object_info(self, header: str, body: dict[str, Any]) -> None:
+        """Display object information in results."""
         ...
 
     def _restore_subtree_expansion(self, node: Any) -> None:
@@ -342,6 +463,72 @@ class AppProtocol(Protocol):
 
     def _save_expanded_state(self) -> None:
         """Save currently expanded nodes."""
+        ...
+
+    def action_tree_filter(self) -> None:
+        """Open the tree filter."""
+        ...
+
+    def action_tree_filter_close(self) -> None:
+        """Close the tree filter."""
+        ...
+
+    def action_tree_filter_accept(self) -> None:
+        """Accept tree filter selection."""
+        ...
+
+    def action_tree_filter_next(self) -> None:
+        """Move to next tree filter match."""
+        ...
+
+    def action_tree_filter_prev(self) -> None:
+        """Move to previous tree filter match."""
+        ...
+
+    def _update_tree_filter(self) -> None:
+        """Update the tree filter state."""
+        ...
+
+    def _jump_to_current_match(self) -> None:
+        """Jump to current tree filter match."""
+        ...
+
+    def _expand_ancestors(self, node: Any) -> None:
+        """Expand ancestor nodes to show a target node."""
+        ...
+
+    def _restore_tree_labels(self) -> None:
+        """Restore tree node labels."""
+        ...
+
+    def _show_all_tree_nodes(self) -> None:
+        """Show all tree nodes."""
+        ...
+
+    def _count_all_nodes(self) -> int:
+        """Count all tree nodes."""
+        ...
+
+    def _find_matching_nodes(self, node: Any, matches: list[Any]) -> bool:
+        """Find matching nodes for tree filter."""
+        ...
+
+    def _get_node_label_text(self, node: Any) -> str:
+        """Get label text for a tree node."""
+        ...
+
+    def _apply_filter_to_tree(self) -> None:
+        """Apply tree filter to node visibility."""
+        ...
+
+    def _set_node_visibility(
+        self, node: Any, match_ids: set[Any], ancestor_ids: set[Any], visible: bool
+    ) -> None:
+        """Set node visibility in tree filter."""
+        ...
+
+    def _rebuild_label_with_highlight(self, node: Any, highlighted_text: str) -> str:
+        """Rebuild node label with highlight markup."""
         ...
 
     def _load_columns_async(self, node: Any, data: Any) -> None:
@@ -394,8 +581,36 @@ class AppProtocol(Protocol):
         """Get the word before the cursor."""
         ...
 
-    def _get_autocomplete_suggestions(self, word: str, context: str) -> list[str]:
+    def _run_db_call(self, fn: Any, *args: Any, **kwargs: Any) -> Any:
+        """Run a db call through the session executor when available."""
+        ...
+
+    def _get_current_word(self, text: str, cursor_pos: int) -> str:
+        """Get the current word at the cursor."""
+        ...
+
+    def _build_alias_map(self, text: str) -> dict[str, str]:
+        """Build alias map for table references."""
+        ...
+
+    def _get_autocomplete_suggestions(self, text: str, cursor_pos: int) -> list[str]:
         """Get autocomplete suggestions."""
+        ...
+
+    def _trigger_autocomplete(self, text_area: Any) -> None:
+        """Trigger autocomplete after debounce."""
+        ...
+
+    def _has_tables_needing_columns(self, text: str) -> bool:
+        """Check if query has tables needing columns."""
+        ...
+
+    def _preload_columns_for_query(self) -> None:
+        """Preload columns for tables in the current query."""
+        ...
+
+    def action_exit_insert_mode(self) -> None:
+        """Exit insert mode."""
         ...
 
     def _show_autocomplete(self, suggestions: list[str], filter_text: str) -> None:
@@ -424,18 +639,138 @@ class AppProtocol(Protocol):
         """Update the schema cache."""
         ...
 
+    def _on_databases_loaded(self, databases: list[Any]) -> None:
+        """Handle database list loaded."""
+        ...
+
+    def _on_databases_error(self, error: Exception) -> None:
+        """Handle database list error."""
+        ...
+
+    def _load_tables_job(self, database: str | None) -> None:
+        """Load tables for a database."""
+        ...
+
+    def _load_views_job(self, database: str | None) -> None:
+        """Load views for a database."""
+        ...
+
+    def _load_procedures_job(self, database: str | None) -> None:
+        """Load procedures for a database."""
+        ...
+
+    def _on_tables_loaded(self, tables: list[Any], database: str | None, cache_key: str) -> None:
+        """Handle tables loaded."""
+        ...
+
+    def _on_tables_error(self, error: Exception, database: str | None) -> None:
+        """Handle tables error."""
+        ...
+
+    def _process_tables_result(self, tables: list[Any], database: str | None, cache_key: str) -> None:
+        """Process tables result."""
+        ...
+
+    def _on_views_loaded(self, views: list[Any], database: str | None, cache_key: str) -> None:
+        """Handle views loaded."""
+        ...
+
+    def _on_views_error(self, error: Exception, database: str | None) -> None:
+        """Handle views error."""
+        ...
+
+    def _process_views_result(self, views: list[Any], database: str | None, cache_key: str) -> None:
+        """Process views result."""
+        ...
+
+    def _on_procedures_loaded(self, procedures: list[Any], database: str | None, cache_key: str) -> None:
+        """Handle procedures loaded."""
+        ...
+
+    def _on_procedures_error(self, error: Exception, database: str | None) -> None:
+        """Handle procedures error."""
+        ...
+
+    def _process_procedures_result(self, procedures: list[Any], cache_key: str) -> None:
+        """Process procedures result."""
+        ...
+
+    def _schema_job_complete(self) -> None:
+        """Mark a schema job complete."""
+        ...
+
     # === Results Mixin methods ===
 
     def _copy_text(self, text: str) -> bool:
         """Copy text to clipboard."""
         ...
 
-    def _flash_table_yank(self, table: DataTable, scope: str) -> None:
+    def _flash_table_yank(self, table: SqlitDataTable, scope: str) -> None:
         """Flash the table to indicate copy."""
         ...
 
     def _format_tsv(self, columns: list[str], rows: list[tuple[Any, ...]]) -> str:
         """Format results as TSV."""
+        ...
+
+    def _replace_results_table(self, columns: list[str], rows: list[tuple[Any, ...]]) -> None:
+        """Replace results table data."""
+        ...
+
+    def _replace_results_table_raw(self, columns: list[str], rows: list[tuple[Any, ...]]) -> None:
+        """Replace results table data without formatting."""
+        ...
+
+    def _restore_results_table(self) -> None:
+        """Restore the results table to the last full state."""
+        ...
+
+    def _get_debounce_ms(self, row_count: int) -> int:
+        """Get debounce delay based on row count."""
+        ...
+
+    def action_results_filter(self) -> None:
+        """Open the results filter."""
+        ...
+
+    def action_results_filter_close(self) -> None:
+        """Close results filter."""
+        ...
+
+    def action_results_filter_accept(self) -> None:
+        """Accept results filter."""
+        ...
+
+    def action_results_filter_next(self) -> None:
+        """Move to next results filter match."""
+        ...
+
+    def action_results_filter_prev(self) -> None:
+        """Move to previous results filter match."""
+        ...
+
+    def _jump_to_current_results_match(self) -> None:
+        """Jump to current results filter match."""
+        ...
+
+    def _schedule_filter_update(self) -> None:
+        """Schedule results filter update."""
+        ...
+
+    def _do_debounced_filter_update(self) -> None:
+        """Run debounced results filter update."""
+        ...
+
+    def _update_results_filter(self) -> None:
+        """Update results filter state and table."""
+        ...
+
+    def _rebuild_results_with_matches(self, matching_rows: list[tuple[Any, ...]], search_text: str) -> None:
+        """Rebuild results table with matches."""
+        ...
+
+    def _highlight_substring(self, text: str, search_lower: str) -> str:
+        """Highlight substring matches in text."""
         ...
 
     # === Query Mixin methods ===
@@ -495,6 +830,22 @@ class AppProtocol(Protocol):
         """Show query history."""
         ...
 
+    def action_copy_query(self) -> None:
+        """Copy the current query."""
+        ...
+
+    def action_copy_cell(self) -> None:
+        """Copy the current cell."""
+        ...
+
+    def _toggle_star(self, query: str) -> None:
+        """Toggle starred status for a query."""
+        ...
+
+    def _clear_query_target_database(self) -> None:
+        """Clear the active query target database."""
+        ...
+
     # === Connection Mixin methods ===
 
     def _set_connection_screen_footer(self) -> None:
@@ -521,6 +872,58 @@ class AppProtocol(Protocol):
         """Handle connection picker result."""
         ...
 
+    def _populate_credentials_if_missing(self, config: ConnectionConfig) -> None:
+        """Populate missing credentials if available."""
+        ...
+
+    def _connect_with_db_password_check(self, config: ConnectionConfig) -> None:
+        """Check db password then connect."""
+        ...
+
+    def _do_connect(self, config: ConnectionConfig) -> None:
+        """Perform the actual connection."""
+        ...
+
+    def _start_connect_spinner(self) -> None:
+        """Start the connection spinner."""
+        ...
+
+    def _stop_connect_spinner(self) -> None:
+        """Stop the connection spinner."""
+        ...
+
+    def _on_connect_spinner_tick(self) -> None:
+        """Handle a connection spinner tick."""
+        ...
+
+    def _get_connection_config_from_data(self, data: Any) -> ConnectionConfig | None:
+        """Get connection config from node data."""
+        ...
+
+    def action_new_connection(self) -> None:
+        """Create a new connection."""
+        ...
+
+    def _handle_docker_container_result(self, result: Any) -> None:
+        """Handle docker connection picker result."""
+        ...
+
+    def _handle_azure_resource_result(self, result: Any) -> None:
+        """Handle Azure connection picker result."""
+        ...
+
+    def _handle_cloud_connection_result(self, result: Any) -> None:
+        """Handle cloud connection picker result."""
+        ...
+
+    def _find_matching_saved_connection(self, container: Any) -> ConnectionConfig | None:
+        """Find saved connection matching a container."""
+        ...
+
+    def _get_connection_config_from_node(self, node: Any) -> ConnectionConfig | None:
+        """Get connection config for a tree node."""
+        ...
+
     # === UI Navigation Mixin methods ===
 
     def _set_fullscreen_mode(self, mode: str) -> None:
@@ -529,6 +932,14 @@ class AppProtocol(Protocol):
 
     def _update_section_labels(self) -> None:
         """Update section labels."""
+        ...
+
+    def _sync_active_pane_title(self) -> None:
+        """Sync active pane title to UI."""
+        ...
+
+    def _update_idle_scheduler_bar(self) -> None:
+        """Update idle scheduler UI bar."""
         ...
 
     def _show_error_in_results(self, message: str, timestamp: str) -> None:
@@ -549,4 +960,17 @@ class AppProtocol(Protocol):
 
     def _execute_leader_command(self, action: str) -> None:
         """Execute leader command."""
+        ...
+
+    def action_close_value_view(self) -> None:
+        """Close the inline value view."""
+        ...
+
+    def action_copy_value_view(self) -> None:
+        """Copy the inline value view content."""
+        ...
+
+    @property
+    def idle_scheduler_bar(self) -> Static:
+        """Status bar for idle scheduler."""
         ...

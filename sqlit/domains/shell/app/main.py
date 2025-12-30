@@ -9,7 +9,7 @@ import tempfile
 import time
 from collections.abc import Awaitable, Callable
 from pathlib import Path
-from typing import Any
+from typing import Any, TYPE_CHECKING, cast
 
 from textual.app import App, ComposeResult
 from textual.binding import Binding
@@ -54,6 +54,10 @@ from sqlit.shared.ui.widgets import (
     TreeFilterInput,
     VimMode,
 )
+from sqlit.shared.ui.protocols import AppProtocol
+
+if TYPE_CHECKING:
+    from sqlit.domains.connections.app.session import ConnectionSession
 
 
 class SSMSTUI(
@@ -335,8 +339,8 @@ class SSMSTUI(
         self.vim_mode: VimMode = VimMode.NORMAL
         self._expanded_paths: set[str] = set()
         self._loading_nodes: set[str] = set()
-        self._session: Any | None = None
-        self._schema_cache: dict = {
+        self._session: ConnectionSession | None = None
+        self._schema_cache: dict[str, Any] = {
             "tables": [],
             "views": [],
             "columns": {},
@@ -348,7 +352,7 @@ class SSMSTUI(
         self._autocomplete_filter: str = ""
         self._autocomplete_just_applied: bool = False
         self._last_result_columns: list[str] = []
-        self._last_result_rows: list[tuple] = []
+        self._last_result_rows: list[tuple[Any, ...]] = []
         self._last_result_row_count: int = 0
         self._results_table_counter: int = 0
         self._internal_clipboard: str = ""
@@ -357,7 +361,7 @@ class SSMSTUI(
         self._last_notification_severity: str = "information"
         self._last_notification_time: str = ""
         self._notification_timer: Timer | None = None
-        self._notification_history: list = []
+        self._notification_history: list[tuple[str, str, str]] = []
         self._connection_failed: bool = False
         self._leader_timer: Timer | None = None
         self._leader_pending: bool = False
@@ -374,11 +378,11 @@ class SSMSTUI(
         self._schema_worker: Worker[Any] | None = None
         self._schema_spinner_index: int = 0
         self._schema_spinner_timer: Timer | None = None
-        self._table_metadata: dict = {}
+        self._table_metadata: dict[str, tuple[str, str, str | None]] = {}
         self._columns_loading: set[str] = set()
         self._state_machine = UIStateMachine()
-        self._session_factory: Any | None = None
-        self._last_query_table: dict | None = None
+        self._session_factory: Callable[[ConnectionConfig], ConnectionSession] | None = None
+        self._last_query_table: dict[str, Any] | None = None
         self._query_target_database: str | None = None  # Target DB for auto-generated queries
         # Idle scheduler for background work
         self._idle_scheduler: IdleScheduler | None = None
@@ -467,27 +471,30 @@ class SSMSTUI(
         wait_for_dismiss: bool = False,
     ) -> Any:
         """Override push_screen to update footer when screen changes."""
+        app = cast(AppProtocol, self)
         if wait_for_dismiss:
             future = super().push_screen(screen, callback, wait_for_dismiss=True)
-            self._update_footer_bindings()
+            app._update_footer_bindings()
             self._update_dialog_state()
             return future
         mount = super().push_screen(screen, callback, wait_for_dismiss=False)
-        self._update_footer_bindings()
+        app._update_footer_bindings()
         self._update_dialog_state()
         return mount
 
     def pop_screen(self) -> Any:
         """Override pop_screen to update footer when screen changes."""
         result = super().pop_screen()
-        self._update_footer_bindings()
+        app = cast(AppProtocol, self)
+        app._update_footer_bindings()
         self._update_dialog_state()
         return result
 
     def _update_dialog_state(self) -> None:
         """Track whether a modal dialog is open and update pane title styling."""
         self._dialog_open = any(isinstance(screen, ModalScreen) for screen in self.screen_stack)
-        self._update_section_labels()
+        app = cast(AppProtocol, self)
+        app._update_section_labels()
 
     def check_action(self, action: str, parameters: tuple) -> bool | None:
         """Check if an action is allowed in the current state.
@@ -560,6 +567,7 @@ class SSMSTUI(
 
     def on_mount(self) -> None:
         """Initialize the app."""
+        app = cast(AppProtocol, self)
         self._startup_stamp("on_mount_start")
         self._restart_argv = self._compute_restart_argv()
 
@@ -570,7 +578,7 @@ class SSMSTUI(
         # Show idle scheduler debug bar if enabled
         if self._debug_idle_scheduler:
             self.idle_scheduler_bar.add_class("visible")
-            self._idle_scheduler_bar_timer = self.set_interval(0.1, self._update_idle_scheduler_bar)
+            self._idle_scheduler_bar_timer = self.set_interval(0.1, app._update_idle_scheduler_bar)
 
         self._theme_manager.register_builtin_themes()
         self._theme_manager.register_textarea_themes()
@@ -591,7 +599,7 @@ class SSMSTUI(
             self._setup_startup_connection(self._startup_connection)
         self._startup_stamp("connections_loaded")
 
-        self.refresh_tree()
+        app.refresh_tree()
         self._startup_stamp("tree_refreshed")
 
         self.object_tree.focus()
@@ -599,16 +607,17 @@ class SSMSTUI(
         # Move cursor to first node if available
         if self.object_tree.root.children:
             self.object_tree.cursor_line = 0
-        self._update_section_labels()
+        app._update_section_labels()
         self._maybe_restore_connection_screen()
         self._startup_stamp("restore_checked")
         if self._debug_mode:
             self.call_after_refresh(self._record_launch_ms)
-        self.call_after_refresh(self._update_status_bar)
-        self._update_footer_bindings()
+        self.call_after_refresh(app._update_status_bar)
+        app._update_footer_bindings()
         self._startup_stamp("footer_updated")
-        if self._startup_connect_config:
-            self.call_after_refresh(lambda: self.connect_to_server(self._startup_connect_config))  # type: ignore[arg-type]
+        startup_config = self._startup_connect_config
+        if startup_config is not None:
+            self.call_after_refresh(lambda config=startup_config: app.connect_to_server(config))
         self._log_startup_timing()
 
     def _apply_mock_settings(self, settings: dict) -> None:
@@ -693,7 +702,8 @@ class SSMSTUI(
     def _record_launch_ms(self) -> None:
         base = self._startup_mark if self._startup_mark is not None else self._startup_init_time
         self._launch_ms = (time.perf_counter() - base) * 1000
-        self._update_status_bar()
+        app = cast(AppProtocol, self)
+        app._update_status_bar()
 
     def _maybe_restore_connection_screen(self) -> None:
         """Restore an in-progress connection form after a driver-install restart."""
@@ -747,7 +757,8 @@ class SSMSTUI(
 
         from sqlit.domains.connections.ui.screens.connection import ConnectionScreen
 
-        self._set_connection_screen_footer()
+        app = cast(AppProtocol, self)
+        app._set_connection_screen_footer()
         self.push_screen(
             ConnectionScreen(
                 config,
@@ -755,7 +766,7 @@ class SSMSTUI(
                 prefill_values=prefill_values,
                 post_install_message=post_install_message if isinstance(post_install_message, str) else None,
             ),
-            self._wrap_connection_result,
+            app._wrap_connection_result,
         )
 
     def watch_theme(self, old_theme: str, new_theme: str) -> None:

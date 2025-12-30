@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.screen import ModalScreen
@@ -121,14 +123,14 @@ class PasswordInputScreen(ModalScreen):
         if event.input.id == "password-input":
             self.dismiss(event.value)
 
-    def on_descendant_focus(self, event) -> None:
+    def on_descendant_focus(self, event: Any) -> None:
         try:
             container = self.query_one("#password-container")
             container.add_class("focused")
         except Exception:
             pass
 
-    def on_descendant_blur(self, event) -> None:
+    def on_descendant_blur(self, event: Any) -> None:
         try:
             container = self.query_one("#password-container")
             container.remove_class("focused")

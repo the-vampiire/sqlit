@@ -206,16 +206,6 @@ class ConnectionSession:
         self._connection = self._adapter.connect(connect_config)
         self._config = new_config
 
-    @connection.setter
-    def connection(self, value: Any) -> None:
-        """Set the raw database connection object."""
-        self._connection = value
-
-    @config.setter
-    def config(self, value: ConnectionConfig) -> None:
-        """Set the connection configuration."""
-        self._config = value
-
     def close(self) -> None:
         """Close the session and release all resources.
 

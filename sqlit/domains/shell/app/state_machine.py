@@ -17,7 +17,7 @@ from enum import Enum, auto
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from .app import SSMSTUI
+    from .main import SSMSTUI
 
 # Guards are referenced by name from the keymap.
 LEADER_GUARDS: dict[str, Callable[[SSMSTUI], bool]] = {
@@ -491,7 +491,8 @@ class TreeOnConnectionState(State):
             node = app.object_tree.cursor_node
             if not node or _get_node_kind(node) != "connection":
                 return False
-            config = node.data.config
+            data = getattr(node, "data", None)
+            config = data.config if data else None
             if not app.current_connection:
                 return True
             return bool(config and app.current_config and config.name != app.current_config.name)
@@ -500,7 +501,8 @@ class TreeOnConnectionState(State):
             node = app.object_tree.cursor_node
             if not node or _get_node_kind(node) != "connection":
                 return False
-            config = node.data.config
+            data = getattr(node, "data", None)
+            config = data.config if data else None
             return bool(
                 app.current_connection is not None
                 and config
@@ -520,7 +522,8 @@ class TreeOnConnectionState(State):
         seen: set[str] = set()
 
         node = app.object_tree.cursor_node
-        config = node.data.config if node and _get_node_kind(node) == "connection" else None
+        data = getattr(node, "data", None) if node and _get_node_kind(node) == "connection" else None
+        config = data.config if data else None
         is_connected = (
             app.current_connection is not None
             and config
@@ -708,7 +711,7 @@ class QueryFocusedState(State):
         pass
 
     def is_active(self, app: SSMSTUI) -> bool:
-        return app.query_input.has_focus
+        return bool(app.query_input.has_focus)
 
 
 class QueryNormalModeState(State):
@@ -757,7 +760,7 @@ class QueryNormalModeState(State):
     def is_active(self, app: SSMSTUI) -> bool:
         from sqlit.shared.ui.widgets import VimMode
 
-        return app.query_input.has_focus and app.vim_mode == VimMode.NORMAL
+        return bool(app.query_input.has_focus) and app.vim_mode == VimMode.NORMAL
 
 
 class QueryInsertModeState(State):
@@ -860,7 +863,7 @@ class ResultsFilterActiveState(BlockingState):
     def is_active(self, app: SSMSTUI) -> bool:
         try:
             return (
-                app.results_table.has_focus
+                bool(app.results_table.has_focus)
                 and getattr(app, "_results_filter_visible", False)
             )
         except Exception:
@@ -888,7 +891,7 @@ class ValueViewActiveState(State):
         try:
             from sqlit.shared.ui.widgets import InlineValueView
             value_view = app.query_one("#value-view", InlineValueView)
-            return value_view.is_visible
+            return bool(value_view.is_visible)
         except Exception:
             return False
 
@@ -945,7 +948,7 @@ class ResultsFocusedState(State):
 
     def is_active(self, app: SSMSTUI) -> bool:
         try:
-            return app.results_table.has_focus
+            return bool(app.results_table.has_focus)
         except Exception:
             # Results table may not exist yet (Lazy loading)
             return False

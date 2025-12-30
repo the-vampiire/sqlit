@@ -463,7 +463,7 @@ def check_entra_only_auth(
 
     try:
         data = json.loads(output)
-        return data.get("azureAdOnlyAuthentication", False)
+        return bool(data.get("azureAdOnlyAuthentication", False))
     except json.JSONDecodeError:
         return False
 

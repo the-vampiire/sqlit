@@ -83,7 +83,7 @@ def get_docker_status() -> DockerStatus:
         DockerStatus indicating the current state of Docker.
     """
     try:
-        import docker
+        import docker  # pyright: ignore[reportMissingModuleSource]
     except ImportError:
         return DockerStatus.NOT_INSTALLED
 
@@ -91,14 +91,12 @@ def get_docker_status() -> DockerStatus:
         client = docker.from_env()
         client.ping()
         return DockerStatus.AVAILABLE
-    except docker.errors.DockerException as e:
+    except Exception as e:
         error_str = str(e).lower()
         if "permission denied" in error_str:
             return DockerStatus.NOT_ACCESSIBLE
         if "connection refused" in error_str or "connect" in error_str:
             return DockerStatus.NOT_RUNNING
-        return DockerStatus.NOT_RUNNING
-    except Exception:
         return DockerStatus.NOT_RUNNING
 
 
@@ -175,17 +173,19 @@ def _get_container_image_name(container: Any) -> str | None:
     try:
         image_tags = container.image.tags
         if image_tags:
-            return image_tags[0]
+            return str(image_tags[0])
     except Exception:
         pass
     try:
         config_image = container.attrs.get("Config", {}).get("Image")
-        if config_image:
+        if isinstance(config_image, str):
             return config_image
+        if config_image:
+            return str(config_image)
     except Exception:
         pass
     try:
-        return container.image.short_id
+        return str(container.image.short_id)
     except Exception:
         return None
 
@@ -330,7 +330,7 @@ def detect_database_containers() -> tuple[DockerStatus, list[DetectedContainer]]
         return status, []
 
     try:
-        import docker
+        import docker  # pyright: ignore[reportMissingModuleSource]
 
         client = docker.from_env()
     except Exception:

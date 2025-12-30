@@ -133,7 +133,7 @@ class ConnectionConfig:
         try:
             return DatabaseType(self.db_type)
         except ValueError:
-            return DatabaseType.MSSQL  # type: ignore[attr-defined, no-any-return]
+            return next(iter(DatabaseType))
 
     def get_source_emoji(self) -> str:
         """Get emoji indicator for connection source (e.g., '🐳 ' for docker)."""

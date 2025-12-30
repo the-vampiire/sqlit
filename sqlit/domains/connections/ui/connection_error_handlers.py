@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Protocol, TYPE_CHECKING
+from typing import Protocol, TYPE_CHECKING, cast
 
 from sqlit.shared.ui.protocols import AppProtocol
 
@@ -14,9 +14,11 @@ if TYPE_CHECKING:
 class ConnectionErrorHandler(Protocol):
     def can_handle(self, error: Exception) -> bool:
         """Return True if this handler can handle the error."""
+        ...
 
     def handle(self, app: AppProtocol, error: Exception, config: ConnectionConfig) -> None:
         """Handle the error."""
+        ...
 
 
 @dataclass(frozen=True)
@@ -28,9 +30,10 @@ class MissingDriverHandler:
 
     def handle(self, app: AppProtocol, error: Exception, config: ConnectionConfig) -> None:
         from .screens import PackageSetupScreen
+        from sqlit.domains.connections.providers.exceptions import MissingDriverError
 
         # No on_success callback - uses default "Restart to apply" behavior
-        app.push_screen(PackageSetupScreen(error))
+        app.push_screen(PackageSetupScreen(cast(MissingDriverError, error)))
 
 
 @dataclass(frozen=True)

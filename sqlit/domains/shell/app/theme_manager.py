@@ -9,7 +9,7 @@ import subprocess
 import sys
 from contextlib import AbstractContextManager
 from pathlib import Path
-from typing import Any, Protocol
+from typing import Any, Mapping, Protocol
 
 from rich.style import Style
 from textual.theme import Theme
@@ -454,7 +454,9 @@ SQLIT_TEXTAREA_THEMES: dict[str, TextAreaTheme] = {
 
 class ThemeAppProtocol(Protocol):
     theme: str
-    available_themes: set[str]
+
+    @property
+    def available_themes(self) -> Mapping[str, Theme]: ...
 
     @property
     def query_input(self) -> Any: ...
@@ -520,7 +522,7 @@ class ThemeManager:
         self.apply_textarea_theme(new_theme)
 
     def apply_omarchy_theme(self) -> None:
-        matched_theme = get_matching_textual_theme(self._app.available_themes)
+        matched_theme = get_matching_textual_theme(set(self._app.available_themes))
         self._app._apply_theme_safe(matched_theme)
 
     def on_omarchy_theme_change(self) -> None:
@@ -642,7 +644,7 @@ class ThemeManager:
             self._app._apply_theme_safe(saved_theme or DEFAULT_THEME)
             return
 
-        matched_theme = get_matching_textual_theme(self._app.available_themes)
+        matched_theme = get_matching_textual_theme(set(self._app.available_themes))
         self._omarchy_last_theme_name = get_current_theme_name()
         if (
             isinstance(saved_theme, str)

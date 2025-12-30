@@ -18,6 +18,7 @@ class UINavigationMixin:
 
     _notification_timer: Timer | None = None
     _leader_timer: Timer | None = None
+    _last_active_pane: str | None = None
 
     def _set_fullscreen_mode(self: AppProtocol, mode: str) -> None:
         """Set fullscreen mode: none|explorer|query|results."""
@@ -415,7 +416,7 @@ class UINavigationMixin:
         self._last_result_rows = [(error_text,)]
         self._last_result_row_count = 1
 
-        self._replace_results_table(["Error"], [(error_text,)])  # type: ignore[attr-defined]
+        self._replace_results_table(["Error"], [(error_text,)])
         self._update_footer_bindings()
 
     def action_toggle_explorer(self: AppProtocol) -> None:

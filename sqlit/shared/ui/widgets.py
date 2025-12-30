@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from textual.app import ComposeResult
 from textual.containers import Container, Horizontal, VerticalScroll
@@ -16,23 +16,24 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
     from textual.widget import Widget
+    from sqlit.shared.ui.protocols import AppProtocol
 
 
 class QueryTextArea(TextArea):
     """TextArea that defers Enter key to app when autocomplete is visible."""
 
-    def _on_key(self, event: Key) -> None:
+    async def _on_key(self, event: Key) -> None:
         """Intercept Enter key when autocomplete is visible."""
         if event.key == "enter":
             # Check if autocomplete is visible on the app
-            app = self.app
+            app = cast("AppProtocol", self.app)
             if getattr(app, "_autocomplete_visible", False):
                 # Hide autocomplete and suppress re-triggering from the newline
                 if hasattr(app, "_hide_autocomplete"):
                     app._hide_autocomplete()
                 app._suppress_autocomplete_on_newline = True
         # For all other keys, use default TextArea behavior
-        super()._on_key(event)
+        await super()._on_key(event)
 
 
 class SqlitDataTable(FastDataTable):
@@ -484,17 +485,18 @@ class InlineValueView(VerticalScroll):
             return
 
         key = event.key
+        app = cast("AppProtocol", self.app)
 
         # Close value view
         if key in ("escape", "q"):
-            self.app.action_close_value_view()
+            app.action_close_value_view()
             event.prevent_default()
             event.stop()
             return
 
         # Copy value
         if key == "y":
-            self.app.action_copy_value_view()
+            app.action_copy_value_view()
             event.prevent_default()
             event.stop()
             return

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from textual.app import ComposeResult
 from textual.binding import Binding
@@ -22,6 +22,7 @@ if TYPE_CHECKING:
     from sqlit.domains.connections.domain.config import ConnectionConfig
     from sqlit.domains.connections.discovery.cloud import CloudProvider
     from sqlit.domains.connections.discovery.cloud_detector import AzureSqlServer
+    from sqlit.domains.connections.discovery.docker_detector import DockerStatus
     from sqlit.domains.connections.discovery.docker_detector import DetectedContainer
 
 
@@ -214,6 +215,7 @@ class ConnectionPickerScreen(ModalScreen):
         self._docker_containers: list[DetectedContainer] = []
         self._docker_status_message: str | None = None
         self._loading_docker = False
+        self._loading_databases: set[str] = set()
         # Cloud provider states
         self._cloud_providers: list[CloudProvider] = get_providers()
         self._cloud_states: dict[str, ProviderState] = {
@@ -831,11 +833,17 @@ class ConnectionPickerScreen(ModalScreen):
                 elif result.action == "connect" and result.config:
                     # Use Azure-specific result for Azure provider (has special handling)
                     if provider.id == "azure":
-                        self.dismiss(AzureConnectionResult(
-                            server=self._get_server_from_config(result.config, state),
-                            database=result.config.database,
-                            use_sql_auth=result.config.options.get("auth_type") == "sql",
-                        ))
+                        server = self._get_server_from_config(result.config, state)
+                        if server is None:
+                            self.notify("Azure server metadata not available", severity="warning")
+                            return
+                        self.dismiss(
+                            AzureConnectionResult(
+                                server=server,
+                                database=result.config.database,
+                                use_sql_auth=result.config.options.get("auth_type") == "sql",
+                            )
+                        )
                     else:
                         # Generic cloud result for AWS, GCP, etc.
                         self.dismiss(CloudConnectionResult(
@@ -863,9 +871,11 @@ class ConnectionPickerScreen(ModalScreen):
 
     def _get_server_from_config(self, config: ConnectionConfig, state: ProviderState) -> AzureSqlServer | None:
         """Get Azure server object from a config."""
+        from sqlit.domains.connections.discovery.cloud_detector import AzureSqlServer
+
         servers = state.extra.get("servers", [])
         for server in servers:
-            if server.fqdn == config.server:
+            if isinstance(server, AzureSqlServer) and server.fqdn == config.server:
                 return server
         return None
 
@@ -893,13 +903,9 @@ class ConnectionPickerScreen(ModalScreen):
         if not servers:
             return
 
-        # Initialize loading set
-        if not hasattr(self, "_loading_databases"):
-            self._loading_databases: set[str] = set()
-
         # Start loading for each server that doesn't have databases yet
         for server in servers:
-            if server.databases:
+            if not hasattr(server, "databases") or server.databases:
                 continue  # Already has databases (from cache)
 
             server_key = f"{server.name}:{server.resource_group}"
@@ -924,10 +930,6 @@ class ConnectionPickerScreen(ModalScreen):
         if not server:
             return
 
-        # Track loading state
-        if not hasattr(self, "_loading_databases"):
-            self._loading_databases: set[str] = set()
-
         server_key = f"{server.name}:{server.resource_group}"
         if server_key in self._loading_databases:
             return  # Already loading
@@ -942,10 +944,12 @@ class ConnectionPickerScreen(ModalScreen):
 
     def _get_azure_server_by_name(self, server_name: str) -> AzureSqlServer | None:
         """Find an Azure server by its name."""
+        from sqlit.domains.connections.discovery.cloud_detector import AzureSqlServer
+
         state = self._cloud_states.get("azure", ProviderState())
         servers = state.extra.get("servers", [])
         for server in servers:
-            if server.name == server_name:
+            if isinstance(server, AzureSqlServer) and server.name == server_name:
                 return server
         return None
 
@@ -961,8 +965,7 @@ class ConnectionPickerScreen(ModalScreen):
         server_key = f"{server.name}:{server.resource_group}"
 
         # Remove from loading set
-        if hasattr(self, "_loading_databases"):
-            self._loading_databases.discard(server_key)
+        self._loading_databases.discard(server_key)
 
         # Update server's databases
         server.databases = databases
@@ -1442,7 +1445,7 @@ class ConnectionPickerScreen(ModalScreen):
                 return True
         return False
 
-    def _is_aws_rds_saved(self, instance) -> bool:
+    def _is_aws_rds_saved(self, instance: Any) -> bool:
         """Check if an RDS instance is already saved."""
         for conn in self.connections:
             if conn.source != "aws":
@@ -1451,7 +1454,7 @@ class ConnectionPickerScreen(ModalScreen):
                 return True
         return False
 
-    def _is_aws_redshift_saved(self, cluster) -> bool:
+    def _is_aws_redshift_saved(self, cluster: Any) -> bool:
         """Check if a Redshift cluster is already saved."""
         for conn in self.connections:
             if conn.source != "aws":
@@ -1460,7 +1463,7 @@ class ConnectionPickerScreen(ModalScreen):
                 return True
         return False
 
-    def _is_gcp_instance_saved(self, instance) -> bool:
+    def _is_gcp_instance_saved(self, instance: Any) -> bool:
         """Check if a GCP instance is already saved."""
         for conn in self.connections:
             if conn.source != "gcp":
@@ -1947,11 +1950,17 @@ class ConnectionPickerScreen(ModalScreen):
                         elif result.action == "connect" and result.config:
                             # Use Azure-specific result for Azure provider
                             if provider.id == "azure":
-                                self.dismiss(AzureConnectionResult(
-                                    server=self._get_server_from_config(result.config, state),
-                                    database=result.config.database,
-                                    use_sql_auth=result.config.options.get("auth_type") == "sql",
-                                ))
+                                server = self._get_server_from_config(result.config, state)
+                                if server is None:
+                                    self.notify("Azure server metadata not available", severity="warning")
+                                    return
+                                self.dismiss(
+                                    AzureConnectionResult(
+                                        server=server,
+                                        database=result.config.database,
+                                        use_sql_auth=result.config.options.get("auth_type") == "sql",
+                                    )
+                                )
                             else:
                                 # Generic cloud result for AWS, GCP, etc.
                                 self.dismiss(CloudConnectionResult(

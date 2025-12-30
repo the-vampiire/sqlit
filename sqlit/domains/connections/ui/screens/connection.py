@@ -13,6 +13,7 @@ from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Container, Horizontal
 from textual.events import ScreenResume, ScreenSuspend
+from textual.widget import Widget
 from textual.screen import ModalScreen
 from textual.widgets import (
     Button,
@@ -254,7 +255,7 @@ class ConnectionScreen(ModalScreen):
         self.editing = editing
         self._prefill_values = prefill_values or {}
         self._post_install_message = post_install_message
-        self._field_widgets: dict[str, Input | OptionList | Select[str]] = {}
+        self._field_widgets: dict[str, Widget] = {}
         self._field_definitions: dict[str, FieldDefinition] = {}
         self._current_db_type: DatabaseType = self._get_initial_db_type()
         self._last_test_error: str = ""
@@ -299,7 +300,7 @@ class ConnectionScreen(ModalScreen):
                 pass
         if self.config:
             return self.config.get_db_type()
-        return DatabaseType.MSSQL  # type: ignore[attr-defined, no-any-return]
+        return next(iter(DatabaseType))
 
     def _get_adapter_for_type(self, db_type: DatabaseType) -> Any:
         return get_adapter(db_type.value)
@@ -484,7 +485,10 @@ class ConnectionScreen(ModalScreen):
             return f"pip install --user {package_name}"
         if strategy.kind == "pipx":
             return f"pipx inject sqlit-tui {package_name}"
-        return strategy.manual_instructions.split("\n")[0].strip()
+        manual = getattr(strategy, "manual_instructions", "")
+        if isinstance(manual, str) and manual:
+            return manual.split("\n")[0].strip()
+        return ""
 
     def _update_driver_status_ui(self) -> None:
         try:
@@ -1004,8 +1008,8 @@ class ConnectionScreen(ModalScreen):
                 try:
                     container = self.query_one(f"#container-{field}", Container)
                     if "hidden" not in container.classes:
-                        widget = self.query_one(f"#field-{field}")
-                        fields.append(widget)
+                        field_widget = self.query_one(f"#field-{field}")
+                        fields.append(field_widget)
                 except Exception:
                     pass
             return fields
@@ -1018,15 +1022,15 @@ class ConnectionScreen(ModalScreen):
                 ]
             )
             for name in self._field_definitions:
-                widget = self._field_widgets.get(name)
-                if widget is None:
+                widget_opt = self._field_widgets.get(name)
+                if widget_opt is None:
                     continue
                 if name.startswith("ssh_"):
                     continue
                 try:
                     container = self.query_one(f"#container-{name}", Container)
                     if "hidden" not in container.classes:
-                        fields.append(widget)
+                        fields.append(widget_opt)
                 except Exception:
                     pass
 
@@ -1035,7 +1039,7 @@ class ConnectionScreen(ModalScreen):
     def _set_select_field_value(self, field_name: str, value: str) -> None:
         widget = self._field_widgets.get(field_name)
         field_def = self._field_definitions.get(field_name)
-        if not isinstance(widget, OptionList) or not field_def or not field_def.options:
+        if widget is None or not isinstance(widget, OptionList) or not field_def or not field_def.options:
             return
         for i, opt in enumerate(field_def.options):
             if opt.value == value:
@@ -1284,7 +1288,7 @@ class ConnectionScreen(ModalScreen):
         try:
             db_type = DatabaseType(str(db_type_value))
         except Exception:
-            db_type = DatabaseType.MSSQL  # type: ignore[attr-defined]
+            db_type = next(iter(DatabaseType))
 
         values = self._get_current_form_values()
 
@@ -1419,7 +1423,7 @@ class ConnectionScreen(ModalScreen):
 
         self._test_with_config(config)
 
-    def _test_with_config(self, config) -> None:
+    def _test_with_config(self, config: ConnectionConfig) -> None:
         import time
 
         self._last_test_ok = None

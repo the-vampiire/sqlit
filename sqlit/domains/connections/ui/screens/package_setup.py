@@ -111,7 +111,7 @@ class PackageSetupScreen(ModalScreen):
         command = self._get_selected_option()
         if command:
 
-            def on_install_complete(success: bool) -> None:
+            def on_install_complete(success: bool | None) -> None:
                 if success and self._on_success:
                     # Caller handles success (e.g., connection screen caches form and restarts)
                     self._on_success()

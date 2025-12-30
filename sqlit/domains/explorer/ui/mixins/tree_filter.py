@@ -247,7 +247,10 @@ class TreeFilterMixin:
             return ""
         label_getter = getattr(data, "get_label_text", None)
         if callable(label_getter):
-            return label_getter()
+            value = label_getter()
+            if isinstance(value, str):
+                return value
+            return "" if value is None else str(value)
         return ""
 
     def _rebuild_label_with_highlight(self, node: Any, highlighted_text: str) -> str:

@@ -12,6 +12,7 @@ from sqlit.shared.ui.protocols import AppProtocol
 from sqlit.shared.ui.spinner import Spinner
 
 if TYPE_CHECKING:
+    from sqlit.domains.connections.app.session import ConnectionSession
     from sqlit.domains.connections.domain.config import ConnectionConfig
     from sqlit.domains.connections.providers.adapters.base import DatabaseAdapter
     from sqlit.domains.connections.discovery.cloud_detector import AzureSqlServer
@@ -30,6 +31,9 @@ class ConnectionMixin:
     current_adapter: DatabaseAdapter | None = None
     _connecting_config: ConnectionConfig | None = None
     _connect_spinner: Spinner | None = None
+    _active_database: str | None = None
+    _session: ConnectionSession | None = None
+    _query_target_database: str | None = None
 
     def _populate_credentials_if_missing(self: AppProtocol, config: ConnectionConfig) -> None:
         """Populate missing credentials from the credentials service."""
@@ -52,7 +56,8 @@ class ConnectionMixin:
             return None
         getter = getattr(data, "get_connection_config", None)
         if callable(getter):
-            return getter()
+            value = getter()
+            return value if isinstance(value, ConnectionConfig) else None
         return None
 
     def _get_connection_config_from_node(self, node: Any) -> ConnectionConfig | None:
@@ -345,7 +350,7 @@ class ConnectionMixin:
         original_name = result[2] if len(result) > 2 else None
 
         if action == "save":
-            def do_save(with_config, orig_name=None) -> None:  # noqa: ANN001
+            def do_save(with_config: ConnectionConfig, orig_name: str | None = None) -> None:
                 # When editing, remove by original name to properly update renamed connections
                 if orig_name:
                     self.connections = [c for c in self.connections if c.name != orig_name]

@@ -52,7 +52,7 @@ class MessageScreen(ModalScreen):
         self._title = title
         self.message = message
         self._enter_label = enter_label
-        self._on_enter = on_enter
+        self._on_enter_callback = on_enter
 
     def compose(self) -> ComposeResult:
         shortcuts = [(self._enter_label, "<enter>")]
@@ -60,8 +60,8 @@ class MessageScreen(ModalScreen):
             yield Static(self.message, id="message-content")
 
     def action_primary(self) -> None:
-        if self._on_enter is not None:
-            self._on_enter()
+        if self._on_enter_callback is not None:
+            self._on_enter_callback()
             return
         self.dismiss()
 

@@ -10,7 +10,7 @@ Supports standard URL formats like:
 from __future__ import annotations
 
 from typing import Protocol
-from urllib.parse import parse_qs, unquote, urlparse
+from urllib.parse import ParseResult, parse_qs, unquote, urlparse
 
 from sqlit.domains.connections.domain.config import ConnectionConfig
 from sqlit.domains.connections.providers.registry import (
@@ -25,19 +25,20 @@ from sqlit.domains.connections.providers.registry import (
 class UrlParseStrategy(Protocol):
     def parse(
         self,
-        parsed: "urlparse",
+        parsed: ParseResult,
         db_type: str,
         name: str,
         original_url: str,
         extra_options: dict[str, str],
     ) -> ConnectionConfig:
         """Parse a URL into a ConnectionConfig."""
+        ...
 
 
 class ServerBasedUrlStrategy:
     def parse(
         self,
-        parsed: "urlparse",
+        parsed: ParseResult,
         db_type: str,
         name: str,
         original_url: str,
@@ -49,7 +50,7 @@ class ServerBasedUrlStrategy:
 class FileBasedUrlStrategy:
     def parse(
         self,
-        parsed: "urlparse",
+        parsed: ParseResult,
         db_type: str,
         name: str,
         original_url: str,
@@ -137,7 +138,7 @@ def parse_connection_url(
 
 
 def _parse_file_based_url(
-    parsed: "urlparse",
+    parsed: ParseResult,
     db_type: str,
     name: str,
     original_url: str,
@@ -175,7 +176,7 @@ def _parse_file_based_url(
 
 
 def _parse_server_based_url(
-    parsed: "urlparse",
+    parsed: ParseResult,
     db_type: str,
     name: str,
     original_url: str,

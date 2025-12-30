@@ -363,8 +363,8 @@ def main() -> int:
     if args.command == "connect":
         from sqlit.domains.shell.app.main import SSMSTUI
 
-        db_type = getattr(args, "provider", None)
-        if not db_type:
+        provider_db_type = getattr(args, "provider", None)
+        if not isinstance(provider_db_type, str):
             connect_parser.print_help()
             return 1
 
@@ -378,7 +378,7 @@ def main() -> int:
                 print(f"Available profiles: {', '.join(list_mock_profiles())}")
                 return 1
 
-        schema = get_connection_schema(db_type)
+        schema = get_connection_schema(provider_db_type)
         try:
             temp_config = build_connection_config_from_args(
                 schema,

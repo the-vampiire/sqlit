@@ -149,12 +149,19 @@ class Installer:
         try:
             if success:
                 restart = getattr(self.app, "restart", None)
+                on_enter = None
+                if callable(restart):
+                    def _restart() -> None:
+                        restart()
+                        return None
+
+                    on_enter = _restart
                 self.app.push_screen(
                     MessageScreen(
                         "Driver installed",
                         f"{error.driver_name} installed successfully. Please restart to apply.",
                         enter_label="Restart",
-                        on_enter=restart if callable(restart) else None,
+                        on_enter=on_enter,
                     )
                 )
             else:

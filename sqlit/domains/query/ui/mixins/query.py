@@ -42,6 +42,7 @@ class QueryMixin:
     _query_spinner: Spinner | None = None
     _query_cursor_cache: dict[str, tuple[int, int]] | None = None  # query text -> cursor (row, col)
     _results_table_counter: int = 0  # Counter for unique table IDs
+    _query_target_database: str | None = None
 
     def action_execute_query(self: AppProtocol) -> None:
         """Execute the current query."""
@@ -151,7 +152,7 @@ class QueryMixin:
         if db_name is not None:
             self._stop_query_spinner()
             self._display_non_query_result(0, 0)
-            self.set_default_database(db_name)  # type: ignore[attr-defined]
+            self.set_default_database(db_name)
             if keep_insert_mode:
                 self._restore_insert_mode()
             return
@@ -218,8 +219,8 @@ class QueryMixin:
 
         if not rows:
             # Columns but no rows - show headers with empty table
-            arrow_columns = {col: [] for col in columns}
-            arrow_table = pa.table(arrow_columns)
+            empty_columns: dict[str, list[Any]] = {col: [] for col in columns}
+            arrow_table = pa.table(empty_columns)
             backend = ArrowBackend(arrow_table)
             new_table = SqlitDataTable(
                 id=new_id,
@@ -242,8 +243,10 @@ class QueryMixin:
             formatted_rows.append(formatted)
 
         # Build Arrow table
-        arrow_columns = {col: [r[i] for r in formatted_rows] for i, col in enumerate(columns)}
-        arrow_table = pa.table(arrow_columns)
+        formatted_columns: dict[str, list[Any]] = {
+            col: [r[i] for r in formatted_rows] for i, col in enumerate(columns)
+        }
+        arrow_table = pa.table(formatted_columns)
         backend = ArrowBackend(arrow_table)
 
         # Create and mount new table, then remove old
@@ -277,8 +280,8 @@ class QueryMixin:
 
         if not rows:
             # Columns but no rows - show headers with empty table
-            arrow_columns = {col: [] for col in columns}
-            arrow_table = pa.table(arrow_columns)
+            empty_columns: dict[str, list[Any]] = {col: [] for col in columns}
+            arrow_table = pa.table(empty_columns)
             backend = ArrowBackend(arrow_table)
             new_table = SqlitDataTable(
                 id=new_id,
@@ -291,10 +294,10 @@ class QueryMixin:
             return
 
         # Build Arrow table (data is already formatted)
-        arrow_columns = {}
+        raw_columns: dict[str, list[Any]] = {}
         for i, col in enumerate(columns):
-            arrow_columns[col] = [r[i] for r in rows[:MAX_RENDER_ROWS]]
-        arrow_table = pa.table(arrow_columns)
+            raw_columns[col] = [r[i] for r in rows[:MAX_RENDER_ROWS]]
+        arrow_table = pa.table(raw_columns)
         backend = ArrowBackend(arrow_table)
 
         # Create and mount new table, then remove old

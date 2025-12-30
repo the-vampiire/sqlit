@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import secrets
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from sqlit.shared.core.store import CONFIG_DIR, JSONFileStore
 
@@ -157,9 +157,9 @@ class KeyringCredentialsService(CredentialsService):
     """
 
     def __init__(self) -> None:
-        self._keyring = None
+        self._keyring: Any | None = None
 
-    def _get_keyring(self):
+    def _get_keyring(self) -> Any:
         if self._keyring is None:
             import keyring
 
@@ -182,7 +182,8 @@ class KeyringCredentialsService(CredentialsService):
         try:
             keyring = self._get_keyring()
             key = self._make_key(connection_name, "db")
-            return keyring.get_password(KEYRING_SERVICE_NAME, key)
+            value = keyring.get_password(KEYRING_SERVICE_NAME, key)
+            return value if isinstance(value, str) else None
         except Exception:
             return None
 
@@ -209,7 +210,8 @@ class KeyringCredentialsService(CredentialsService):
         try:
             keyring = self._get_keyring()
             key = self._make_key(connection_name, "ssh")
-            return keyring.get_password(KEYRING_SERVICE_NAME, key)
+            value = keyring.get_password(KEYRING_SERVICE_NAME, key)
+            return value if isinstance(value, str) else None
         except Exception:
             return None
 

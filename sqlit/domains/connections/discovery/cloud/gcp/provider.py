@@ -166,6 +166,7 @@ class GCPProvider:
 
         # Try cache first - this is fast and avoids CLI calls
         cached = None
+        project: str | None = None
         if use_cache:
             cached = load_cached_data()
 

@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 from typing import Any
 
+from textual.timer import Timer
 from textual.widgets import TextArea
 from textual.worker import Worker
 
@@ -32,6 +33,11 @@ class AutocompleteMixin:
     _schema_cache: dict[str, Any] = {}
     _table_metadata: dict[str, tuple[str, str, str | None]] = {}
     _autocomplete_debounce_timer: Timer | None = None
+    _schema_pending_dbs: list[str | None] = []
+    _schema_total_jobs: int = 0
+    _schema_completed_jobs: int = 0
+    _schema_scheduler: Any = None
+    _text_just_changed: bool = False
     # Shared cache for raw DB objects - used by both tree and autocomplete
     # Structure: {db_name: {"tables": [(schema, name), ...], "views": [...], "procedures": [...]}}
     _db_object_cache: dict[str, dict[str, list[Any]]] = {}
@@ -82,7 +88,7 @@ class AutocompleteMixin:
         if suggestions:
             alias_map = self._build_alias_map(text)
             table_refs = extract_table_refs(text)
-            loading = getattr(self, "_columns_loading", set())
+            loading: set[str] = getattr(self, "_columns_loading", set())
 
             for suggestion in suggestions:
                 if suggestion.type == SuggestionType.COLUMN:
@@ -191,7 +197,7 @@ class AutocompleteMixin:
 
         table_refs = extract_table_refs(text)
         columns_cache = self._schema_cache.get("columns", {})
-        loading = getattr(self, "_columns_loading", set())
+        loading: set[str] = getattr(self, "_columns_loading", set())
 
         for ref in table_refs:
             table_key = ref.name.lower()
@@ -213,7 +219,7 @@ class AutocompleteMixin:
         # Extract table references from the query
         table_refs = extract_table_refs(text)
         columns_cache = self._schema_cache.get("columns", {})
-        loading = getattr(self, "_columns_loading", set())
+        loading: set[str] = getattr(self, "_columns_loading", set())
 
         for ref in table_refs:
             table_key = ref.name.lower()
@@ -479,7 +485,7 @@ class AutocompleteMixin:
             return
 
         # Track pending database loads
-        self._schema_pending_dbs: list[str | None] = []
+        self._schema_pending_dbs = []
         self._schema_total_jobs = 0
         self._schema_completed_jobs = 0
 
@@ -521,7 +527,7 @@ class AutocompleteMixin:
             return
 
         # Track pending database loads
-        self._schema_pending_dbs: list[str | None] = []
+        self._schema_pending_dbs = []
         self._schema_total_jobs = 0
         self._schema_completed_jobs = 0
         # Store scheduler reference for use in callbacks

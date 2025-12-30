@@ -11,7 +11,7 @@ import time
 from collections import deque
 from dataclasses import dataclass, field
 from enum import Enum, auto
-from typing import Any, Callable, Coroutine, TYPE_CHECKING
+from typing import Any, Callable, Coroutine, TYPE_CHECKING, cast
 
 if TYPE_CHECKING:
     from textual.app import App
@@ -80,7 +80,7 @@ class IdleScheduler:
         # Stats for debugging
         self._jobs_completed = 0
         self._jobs_dropped = 0
-        self._total_work_time_ms = 0
+        self._total_work_time_ms = 0.0
 
     @property
     def is_idle(self) -> bool:
@@ -254,7 +254,8 @@ class IdleScheduler:
     async def _run_async_job(self, job: IdleJob) -> None:
         """Run an async job."""
         try:
-            await job.callback()  # type: ignore
+            callback = cast(Callable[[], Coroutine[Any, Any, Any]], job.callback)
+            await callback()
             self._jobs_completed += 1
         except Exception as e:
             self.app.log.error(f"IdleScheduler async job failed: {job.name or 'unnamed'}: {e}")

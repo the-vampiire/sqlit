@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Any, cast
 from sqlit.domains.connections.providers.adapters.base import ColumnInfo, DatabaseAdapter, IndexInfo, SequenceInfo, TableInfo, TriggerInfo, import_driver_module
 
 if TYPE_CHECKING:
-    import requests
+    import requests  # pyright: ignore[reportMissingModuleSource]
 
     from sqlit.domains.connections.domain.config import ConnectionConfig
 

@@ -80,7 +80,7 @@ class ResultsFilterMixin:
 
         # Restore original data
         if self._results_filter_original_rows:
-            self._replace_results_table(self._last_result_columns, self._results_filter_original_rows)  # type: ignore[attr-defined]
+            self._replace_results_table(self._last_result_columns, self._results_filter_original_rows)
             self._last_result_rows = list(self._results_filter_original_rows)
 
         self._update_footer_bindings()
@@ -128,9 +128,9 @@ class ResultsFilterMixin:
         """Handle key events when results filter is active."""
         if not self._results_filter_visible:
             # Pass to next mixin in chain if it has on_key
-            parent = super()
-            if hasattr(parent, "on_key"):
-                parent.on_key(event)  # type: ignore[misc]
+            parent_on_key = getattr(super(), "on_key", None)
+            if callable(parent_on_key):
+                parent_on_key(event)
             return
 
         key = event.key
@@ -171,9 +171,9 @@ class ResultsFilterMixin:
             return
 
         # For other keys, pass to parent
-        parent = super()
-        if hasattr(parent, "on_key"):
-            parent.on_key(event)  # type: ignore[misc]
+        parent_on_key = getattr(super(), "on_key", None)
+        if callable(parent_on_key):
+            parent_on_key(event)
 
     def _schedule_filter_update(self: AppProtocol) -> None:
         """Schedule a debounced filter update based on row count."""
@@ -319,7 +319,7 @@ class ResultsFilterMixin:
             highlighted_rows.append(tuple(highlighted_row))
 
         # Update the table with filtered results (markup already applied)
-        self._replace_results_table_raw(self._last_result_columns, highlighted_rows)  # type: ignore[attr-defined]
+        self._replace_results_table_raw(self._last_result_columns, highlighted_rows)
 
     def _highlight_substring(self: AppProtocol, text: str, search_lower: str) -> str:
         """Highlight substring matches in text (case-insensitive)."""
@@ -353,7 +353,7 @@ class ResultsFilterMixin:
             return
 
         # Use _replace_results_table which handles escaping
-        self._replace_results_table(self._last_result_columns, self._results_filter_original_rows)  # type: ignore[attr-defined]
+        self._replace_results_table(self._last_result_columns, self._results_filter_original_rows)
 
         # Update stored rows to match original
         self._last_result_rows = list(self._results_filter_original_rows)

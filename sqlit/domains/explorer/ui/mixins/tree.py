@@ -26,11 +26,21 @@ from sqlit.domains.explorer.domain.tree_nodes import (
 )
 
 if TYPE_CHECKING:
-    pass
+    from sqlit.domains.connections.app.session import ConnectionSession
+    from sqlit.domains.connections.domain.config import ConnectionConfig
+    from sqlit.domains.connections.providers.adapters.base import DatabaseAdapter
 
 
 class TreeMixin:
     """Mixin providing tree/explorer functionality."""
+
+    _active_database: str | None = None
+    connections: list[ConnectionConfig]
+    current_config: ConnectionConfig | None = None
+    current_connection: Any | None = None
+    current_adapter: DatabaseAdapter | None = None
+    _session: ConnectionSession | None = None
+    _last_query_table: dict[str, Any] | None = None
 
     def _run_db_call(self: AppProtocol, fn: Any, *args: Any, **kwargs: Any) -> Any:
         session = getattr(self, "_session", None)
@@ -85,7 +95,11 @@ class TreeMixin:
         label = self._format_connection_label(connecting_config, "connecting", spinner=spinner)
 
         for node in self.object_tree.root.children:
-            if self._get_node_kind(node) == "connection" and node.data.config.name == connecting_config.name:
+            if self._get_node_kind(node) != "connection":
+                continue
+            data = getattr(node, "data", None)
+            config = getattr(data, "config", None)
+            if config and config.name == connecting_config.name:
                 node.set_label(label)
                 node.allow_expand = False
                 break
@@ -105,7 +119,10 @@ class TreeMixin:
             and self.current_config is not None
             and direct_config.name == self.current_config.name
         )
-        connections = [self.current_config] if direct_active else self.connections
+        if direct_active and self.current_config is not None:
+            connections: list[ConnectionConfig] = [self.current_config]
+        else:
+            connections = list(self.connections)
         if connecting_config and not any(c.name == connecting_config.name for c in connections):
             connections = connections + [connecting_config]
 
@@ -150,7 +167,9 @@ class TreeMixin:
         active_node = None
         for child in self.object_tree.root.children:
             if self._get_node_kind(child) == "connection":
-                if child.data.config.name == self.current_config.name:
+                data = getattr(child, "data", None)
+                config = getattr(data, "config", None)
+                if config and config.name == self.current_config.name:
                     child.set_label(get_conn_label(self.current_config, connected=True))
                     active_node = child
                     break
@@ -794,7 +813,7 @@ class TreeMixin:
                 rows.append((display_key, display_value))
 
         # Update the results table using the helper method
-        self._replace_results_table(["Property", "Value"], rows)  # type: ignore[attr-defined]
+        self._replace_results_table(["Property", "Value"], rows)
 
         # Store for copy/export functionality
         self._last_result_columns = ["Property", "Value"]
@@ -949,16 +968,23 @@ class TreeMixin:
                 continue
 
             # Check if this is the active connection
-            if not (conn_node.data and conn_node.data.config.name == self.current_config.name):
+            conn_data = getattr(conn_node, "data", None)
+            conn_config = getattr(conn_data, "config", None)
+            if not (conn_config and conn_config.name == self.current_config.name):
                 continue
 
             # Find Databases folder
             for child in conn_node.children:
-                if self._get_node_kind(child) == "folder" and child.data.folder_type == "databases":
+                child_data = getattr(child, "data", None)
+                folder_type = getattr(child_data, "folder_type", None)
+                if self._get_node_kind(child) == "folder" and folder_type == "databases":
                     # Update each database node
                     for db_node in child.children:
                         if self._get_node_kind(db_node) == "database":
-                            db_name = db_node.data.name
+                            db_data = getattr(db_node, "data", None)
+                            db_name = getattr(db_data, "name", None)
+                            if not db_name:
+                                continue
                             is_active = active_db and db_name.lower() == active_db.lower()
                             if is_active:
                                 db_node.set_label(f"[#4ADE80]* {escape_markup(db_name)}[/]")
@@ -978,7 +1004,10 @@ class TreeMixin:
             self.notify("Not connected", severity="error")
             return
 
-        db_name = node.data.name
+        data = getattr(node, "data", None)
+        db_name = getattr(data, "name", None)
+        if not db_name:
+            return
         current_active = None
         if hasattr(self, "_get_effective_database"):
             current_active = self._get_effective_database()

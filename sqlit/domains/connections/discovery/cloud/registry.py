@@ -55,15 +55,15 @@ def _auto_register_providers() -> None:
     """Auto-register built-in providers."""
     # Import providers to trigger registration
     try:
-        from .azure import provider as _  # noqa: F401
+        from .azure import provider as _azure_provider  # noqa: F401
     except ImportError:
         pass
     try:
-        from .aws import provider as _  # noqa: F401
+        from .aws import provider as _aws_provider  # noqa: F401
     except ImportError:
         pass
     try:
-        from .gcp import provider as _  # noqa: F401
+        from .gcp import provider as _gcp_provider  # noqa: F401
     except ImportError:
         pass
 

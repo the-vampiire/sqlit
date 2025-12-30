@@ -122,7 +122,8 @@ def _build_adapter_from_settings(db_type: str, config: dict[str, Any]) -> MockDa
     name = str(config.get("name") or db_type.title())
     default_schema = str(config.get("default_schema") or "")
 
-    connect = config.get("connect") if isinstance(config.get("connect"), dict) else {}
+    raw_connect = config.get("connect")
+    connect: dict[str, Any] = raw_connect if isinstance(raw_connect, dict) else {}
     connect_result = str(connect.get("result") or "success")
     connect_error = str(connect.get("error_message") or "Connection failed")
     required_fields = connect.get("required_fields")

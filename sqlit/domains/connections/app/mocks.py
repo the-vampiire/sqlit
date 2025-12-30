@@ -75,7 +75,7 @@ def _generate_fake_data(row_count: int) -> tuple[list[str], list[tuple]]:
                 i + 1,
                 f"User {i + 1}",
                 f"user{i + 1}@example.com",
-                round((i * 17.5) % 1000, 2),  # Pseudo-random values
+                f"{round((i * 17.5) % 1000, 2):.2f}",  # Pseudo-random values
                 statuses[i % len(statuses)],
                 f"2024-{(i % 12) + 1:02d}-{(i % 28) + 1:02d}",
             ))

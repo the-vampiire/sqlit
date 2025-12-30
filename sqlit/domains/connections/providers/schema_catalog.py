@@ -7,6 +7,7 @@ The canonical provider registry lives in `sqlit.domains.connections.providers.re
 from __future__ import annotations
 
 from collections.abc import Callable
+from typing import Any
 from dataclasses import dataclass
 from enum import Enum
 
@@ -561,12 +562,19 @@ def _get_athena_auth_options() -> tuple[SelectOption, ...]:
     )
 
 
-def _athena_auth_is_profile(v: dict) -> bool:
-    return v.get("athena_auth_method", "profile") == "profile"
+def _get_str_option(config: dict[str, Any], key: str, default: str | None = None) -> str | None:
+    value = config.get(key, default)
+    if isinstance(value, str):
+        return value
+    return None
 
 
-def _athena_auth_is_keys(v: dict) -> bool:
-    return v.get("athena_auth_method") == "keys"
+def _athena_auth_is_profile(config: dict[str, Any]) -> bool:
+    return _get_str_option(config, "athena_auth_method", "profile") == "profile"
+
+
+def _athena_auth_is_keys(config: dict[str, Any]) -> bool:
+    return _get_str_option(config, "athena_auth_method") == "keys"
 
 
 ATHENA_SCHEMA = ConnectionSchema(
@@ -642,11 +650,11 @@ def _get_redshift_auth_options() -> tuple[SelectOption, ...]:
 
 
 def _redshift_auth_is_password(config: dict[str, Any]) -> bool:
-    return config.get("redshift_auth_method", "password") == "password"
+    return _get_str_option(config, "redshift_auth_method", "password") == "password"
 
 
 def _redshift_auth_is_iam(config: dict[str, Any]) -> bool:
-    return config.get("redshift_auth_method") == "iam"
+    return _get_str_option(config, "redshift_auth_method") == "iam"
 
 
 REDSHIFT_SCHEMA = ConnectionSchema(
@@ -736,7 +744,7 @@ def _get_bigquery_auth_options() -> tuple[SelectOption, ...]:
 
 
 def _bigquery_auth_is_service_account(config: dict[str, Any]) -> bool:
-    return config.get("bigquery_auth_method") == "service_account"
+    return _get_str_option(config, "bigquery_auth_method") == "service_account"
 
 
 BIGQUERY_SCHEMA = ConnectionSchema(

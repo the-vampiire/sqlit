@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from sqlit.shared.ui.widgets import SqlitDataTable
 
 from sqlit.shared.ui.protocols import AppProtocol
@@ -9,6 +11,12 @@ from sqlit.shared.ui.protocols import AppProtocol
 
 class ResultsMixin:
     """Mixin providing results handling functionality."""
+
+    _last_result_columns: list[str] = []
+    _last_result_rows: list[tuple[Any, ...]] = []
+    _last_result_row_count: int = 0
+    _tooltip_cell_coord: tuple[int, int] | None = None
+    _tooltip_showing: bool = False
 
     def _copy_text(self: AppProtocol, text: str) -> bool:
         """Copy text to clipboard if possible, otherwise store internally."""
@@ -242,7 +250,7 @@ class ResultsMixin:
 
     def action_clear_results(self: AppProtocol) -> None:
         """Clear the results table."""
-        self._replace_results_table([], [])  # type: ignore[attr-defined]
+        self._replace_results_table([], [])
         self._last_result_columns = []
         self._last_result_rows = []
         self._last_result_row_count = 0

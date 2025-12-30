@@ -590,11 +590,10 @@ def find_context_keyword(sql: str) -> str:
         return ""
 
     if ends_with_space or len(tokens) == 1:
-        return tokens[-1].lower()
-    else:
-        if len(tokens) >= 2:
-            return tokens[-2].lower()
-        return tokens[-1].lower()
+        return str(tokens[-1]).lower()
+    if len(tokens) >= 2:
+        return str(tokens[-2]).lower()
+    return str(tokens[-1]).lower()
 
 
 def find_last_keyword(sql: str) -> str:

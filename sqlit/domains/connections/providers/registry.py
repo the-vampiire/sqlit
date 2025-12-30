@@ -6,7 +6,7 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from functools import lru_cache
 from importlib import import_module
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 import pkgutil
 
 if TYPE_CHECKING:
@@ -43,6 +43,8 @@ def _discover_providers() -> None:
     if _DISCOVERED:
         return
 
+    if __package__ is None:
+        return
     package = import_module(__package__)
     for module_info in pkgutil.iter_modules(package.__path__):
         name = module_info.name
@@ -82,7 +84,7 @@ def _load_schema(module_name: str, attr_name: str) -> ConnectionSchema:
     schema = getattr(module, attr_name, None)
     if schema is None:
         raise ImportError(f"Schema '{attr_name}' not found in {module_name}")
-    return schema
+    return cast("ConnectionSchema", schema)
 
 
 def get_connection_schema(db_type: str) -> ConnectionSchema:

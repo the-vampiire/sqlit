@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any
 from sqlit.domains.connections.providers.adapters.base import ColumnInfo, DatabaseAdapter, IndexInfo, SequenceInfo, TableInfo, TriggerInfo, import_driver_module
 
 if TYPE_CHECKING:
-    from sqlit.domains.connections.domain.config import ConnectionConfig
+    from sqlit.domains.connections.domain.config import AuthType, ConnectionConfig
 
 
 class SQLServerAdapter(DatabaseAdapter):

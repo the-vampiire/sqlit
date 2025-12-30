@@ -143,6 +143,9 @@ def cmd_connection_create(args: Any) -> int:
         return 1
 
     db_type = getattr(args, "provider", None)
+    if not isinstance(db_type, str):
+        print("Error: provider is required.")
+        return 1
     try:
         DatabaseType(db_type)
     except ValueError:
