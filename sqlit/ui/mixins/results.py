@@ -74,18 +74,55 @@ class ResultsMixin:
         return "\n".join(lines)
 
     def action_view_cell(self: AppProtocol) -> None:
-        """View the full value of the selected cell."""
-        from ..screens import ValueViewScreen
+        """View the full value of the selected cell inline."""
+        from ...widgets import InlineValueView
 
         table = self.results_table
         if table.row_count <= 0:
             self.notify("No results", severity="warning")
             return
         try:
+            cursor_row, cursor_col = table.cursor_coordinate
             value = table.get_cell_at(table.cursor_coordinate)
         except Exception:
             return
-        self.push_screen(ValueViewScreen(str(value) if value is not None else "NULL", title="Cell Value"))
+
+        # Get column name if available
+        column_name = ""
+        if self._last_result_columns and cursor_col < len(self._last_result_columns):
+            column_name = self._last_result_columns[cursor_col]
+
+        # Show inline value view
+        try:
+            value_view = self.query_one("#value-view", InlineValueView)
+            value_view.set_value(str(value) if value is not None else "NULL", column_name)
+            value_view.show()
+        except Exception:
+            pass
+
+    def action_close_value_view(self: AppProtocol) -> None:
+        """Close the inline value view and return to results table."""
+        from ...widgets import InlineValueView
+
+        try:
+            value_view = self.query_one("#value-view", InlineValueView)
+            if value_view.is_visible:
+                value_view.hide()
+                self.results_table.focus()
+        except Exception:
+            pass
+
+    def action_copy_value_view(self: AppProtocol) -> None:
+        """Copy the value from the inline value view."""
+        from ...widgets import InlineValueView, flash_widget
+
+        try:
+            value_view = self.query_one("#value-view", InlineValueView)
+            if value_view.is_visible:
+                self._copy_text(value_view.value)
+                flash_widget(value_view)
+        except Exception:
+            pass
 
     def action_copy_cell(self: AppProtocol) -> None:
         """Copy the selected cell to clipboard (or internal clipboard)."""

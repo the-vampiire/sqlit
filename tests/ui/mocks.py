@@ -255,3 +255,51 @@ def create_test_connection(
     }
     defaults.update(kwargs)
     return ConnectionConfig.from_dict(defaults)
+
+
+def generate_long_varchar_rows(
+    row_count: int = 5,
+    text_lengths: dict[str, int] | None = None,
+) -> tuple[list[str], list[tuple]]:
+    """Generate mock query results with configurable long text columns.
+
+    Useful for testing truncation behavior in CLI output and UI rendering.
+
+    Args:
+        row_count: Number of rows to generate
+        text_lengths: Dict of column_name -> character length.
+                      Defaults to a variety of lengths for testing truncation.
+
+    Returns:
+        Tuple of (columns, rows)
+
+    Example:
+        # Test with a 200-char description column
+        cols, rows = generate_long_varchar_rows(3, {"description": 200})
+
+        # Default columns test various truncation boundaries
+        cols, rows = generate_long_varchar_rows(5)
+    """
+    if text_lengths is None:
+        # Default: variety of lengths to test truncation boundary (MAX_COL_WIDTH=50)
+        text_lengths = {
+            "short_text": 10,       # Well under limit
+            "near_limit": 48,       # Just under limit
+            "at_limit": 50,         # Exactly at limit
+            "over_limit": 80,       # Over limit
+            "very_long_text": 200,  # Way over limit
+        }
+
+    columns = ["id"] + list(text_lengths.keys())
+    rows = []
+
+    for i in range(row_count):
+        row: list[Any] = [i + 1]
+        for col_name, length in text_lengths.items():
+            # Generate predictable text with visible pattern for easy verification
+            base = f"R{i + 1}_{col_name[:8]}_"
+            text = (base * ((length // len(base)) + 1))[:length]
+            row.append(text)
+        rows.append(tuple(row))
+
+    return columns, rows

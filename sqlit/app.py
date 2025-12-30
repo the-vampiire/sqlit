@@ -48,6 +48,7 @@ from .ui.mixins import (
 from .widgets import (
     AutocompleteDropdown,
     ContextFooter,
+    InlineValueView,
     ResultsFilterInput,
     SqlitDataTable,
     TreeFilterInput,
@@ -189,6 +190,15 @@ class SSMSTUI(
 
     #results-area DataTable {
         height: 1fr;
+    }
+
+    /* Hide results table when value view is visible */
+    #results-area.value-view-active DataTable {
+        display: none;
+    }
+
+    #results-area.value-view-active #results-filter {
+        display: none;
     }
 
     /* FastDataTable header styling */
@@ -540,6 +550,7 @@ class SSMSTUI(
                     with Container(id="results-area"):
                         yield ResultsFilterInput(id="results-filter")
                         yield Lazy(SqlitDataTable(id="results-table", zebra_stripes=True, show_header=False))
+                        yield InlineValueView(id="value-view")
 
             yield Static("", id="idle-scheduler-bar")
             yield Static("Not connected", id="status-bar")

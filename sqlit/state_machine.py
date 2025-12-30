@@ -867,6 +867,32 @@ class ResultsFilterActiveState(BlockingState):
             return False
 
 
+class ValueViewActiveState(State):
+    """Inline value view is active (viewing a cell's full content)."""
+
+    help_category = "Value View"
+
+    def _setup_actions(self) -> None:
+        self.allows("close_value_view", key="escape", label="Close", help="Close value view")
+        self.allows("close_value_view", key="q", label="Close", help="Close value view")
+        self.allows("copy_value_view", key="y", label="Copy", help="Copy value")
+
+    def get_display_bindings(self, app: SSMSTUI) -> tuple[list[DisplayBinding], list[DisplayBinding]]:
+        left: list[DisplayBinding] = [
+            DisplayBinding(key="esc", label="Close", action="close_value_view"),
+            DisplayBinding(key="y", label="Copy", action="copy_value_view"),
+        ]
+        return left, []
+
+    def is_active(self, app: SSMSTUI) -> bool:
+        try:
+            from .widgets import InlineValueView
+            value_view = app.query_one("#value-view", InlineValueView)
+            return value_view.is_visible
+        except Exception:
+            return False
+
+
 class ResultsFocusedState(State):
     """Results table has focus."""
 
@@ -952,6 +978,7 @@ class UIStateMachine:
 
         self.results_focused = ResultsFocusedState(parent=self.main_screen)
         self.results_filter_active = ResultsFilterActiveState(parent=self.main_screen)
+        self.value_view_active = ValueViewActiveState(parent=self.main_screen)
 
         self._states = [
             self.modal_active,
@@ -969,6 +996,7 @@ class UIStateMachine:
             self.query_normal,
             self.query_focused,
             self.results_filter_active,  # Before results_focused (more specific when filter active)
+            self.value_view_active,  # Before results_focused (more specific when viewing cell)
             self.results_focused,
             self.main_screen,
             self.root,

@@ -145,6 +145,11 @@ def main() -> int:
         help="Generate fake data with COUNT rows for mock queries (requires --mock, uses Faker if installed).",
     )
     parser.add_argument(
+        "--demo-long-text",
+        action="store_true",
+        help="Generate data with long varchar columns to test truncation (use with --mock).",
+    )
+    parser.add_argument(
         "--max-rows",
         type=int,
         default=0,
@@ -287,6 +292,10 @@ def main() -> int:
         os.environ["SQLIT_DEMO_ROWS"] = str(args.demo_rows)
     else:
         os.environ.pop("SQLIT_DEMO_ROWS", None)
+    if args.demo_long_text:
+        os.environ["SQLIT_DEMO_LONG_TEXT"] = "1"
+    else:
+        os.environ.pop("SQLIT_DEMO_LONG_TEXT", None)
     if args.max_rows and args.max_rows > 0:
         os.environ["SQLIT_MAX_ROWS"] = str(args.max_rows)
     else:

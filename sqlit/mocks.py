@@ -17,6 +17,14 @@ Performance Testing:
         sqlit --mock=perf-test --demo-rows=1000    # 1k rows
         sqlit --mock=perf-test --demo-rows=10000   # 10k rows
         sqlit --mock=sqlite-demo --demo-rows=5000  # Any profile works
+
+Long Text Testing:
+    Use --demo-long-text to generate data with long varchar columns.
+    Useful for testing how the UI handles text truncation.
+
+    Examples:
+        sqlit --mock=sqlite-demo --demo-long-text             # 10 rows with long text
+        sqlit --mock=sqlite-demo --demo-long-text --demo-rows=50  # 50 rows with long text
 """
 
 from __future__ import annotations
@@ -72,6 +80,45 @@ def _generate_fake_data(row_count: int) -> tuple[list[str], list[tuple]]:
                 f"2024-{(i % 12) + 1:02d}-{(i % 28) + 1:02d}",
             ))
         return columns, rows
+
+
+def _generate_long_text_data(row_count: int) -> tuple[list[str], list[tuple]]:
+    """Generate data with long varchar columns for testing truncation.
+
+    Creates columns with varying text lengths to test UI truncation behavior.
+    Useful for verifying how long text fields are displayed/truncated.
+
+    Args:
+        row_count: Number of rows to generate.
+
+    Returns:
+        Tuple of (columns, rows).
+    """
+    # Column lengths designed to test truncation boundaries
+    text_lengths = {
+        "short_text": 15,       # Short, no truncation expected
+        "medium_text": 50,      # Around typical column width
+        "long_text": 150,       # Definitely needs truncation
+        "very_long_text": 500,  # Very long content
+        "description": 300,     # Realistic long field
+    }
+
+    columns = ["id", "name"] + list(text_lengths.keys())
+    rows = []
+
+    for i in range(row_count):
+        row: list[object] = [i + 1, f"Row {i + 1}"]
+        for col_name, length in text_lengths.items():
+            # Generate text with visible pattern showing row number and column
+            base = f"[R{i + 1}:{col_name[:6]}]"
+            # Fill with Lorem-style content
+            filler = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. "
+            text = base + (filler * ((length // len(filler)) + 1))
+            text = text[:length]
+            row.append(text)
+        rows.append(tuple(row))
+
+    return columns, rows
 
 
 class MockConnection:
@@ -298,6 +345,18 @@ class MockDatabaseAdapter(DatabaseAdapter):
 
         if self._query_delay > 0:
             time.sleep(self._query_delay)
+
+        # Check if demo long text mode is enabled (for testing truncation)
+        if os.environ.get("SQLIT_DEMO_LONG_TEXT"):
+            demo_rows_env = os.environ.get("SQLIT_DEMO_ROWS", "10")
+            try:
+                demo_row_count = int(demo_rows_env)
+            except ValueError:
+                demo_row_count = 10
+            cols, rows = _generate_long_text_data(demo_row_count)
+            if max_rows and len(rows) > max_rows:
+                return cols, rows[:max_rows], True
+            return cols, rows, False
 
         # Check if demo rows mode is enabled
         demo_rows_env = os.environ.get("SQLIT_DEMO_ROWS", "")

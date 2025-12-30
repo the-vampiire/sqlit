@@ -21,6 +21,9 @@ if TYPE_CHECKING:
 MAX_FETCH_ROWS = 100000
 MAX_RENDER_ROWS = 100000
 
+# Column content truncation (full value shown in tooltip and copied to clipboard)
+MAX_COLUMN_CONTENT_WIDTH = 100
+
 
 class QueryMixin:
     """Mixin providing query execution functionality.
@@ -217,7 +220,12 @@ class QueryMixin:
             arrow_columns = {col: [] for col in columns}
             arrow_table = pa.table(arrow_columns)
             backend = ArrowBackend(arrow_table)
-            new_table = SqlitDataTable(id=new_id, zebra_stripes=True, backend=backend)
+            new_table = SqlitDataTable(
+                id=new_id,
+                zebra_stripes=True,
+                backend=backend,
+                max_column_content_width=MAX_COLUMN_CONTENT_WIDTH,
+            )
             container.mount(new_table, after=old_table)
             old_table.remove()
             return
@@ -238,7 +246,12 @@ class QueryMixin:
         backend = ArrowBackend(arrow_table)
 
         # Create and mount new table, then remove old
-        new_table = SqlitDataTable(id=new_id, zebra_stripes=True, backend=backend)
+        new_table = SqlitDataTable(
+            id=new_id,
+            zebra_stripes=True,
+            backend=backend,
+            max_column_content_width=MAX_COLUMN_CONTENT_WIDTH,
+        )
         container.mount(new_table, after=old_table)
         old_table.remove()
 
@@ -266,7 +279,12 @@ class QueryMixin:
             arrow_columns = {col: [] for col in columns}
             arrow_table = pa.table(arrow_columns)
             backend = ArrowBackend(arrow_table)
-            new_table = SqlitDataTable(id=new_id, zebra_stripes=True, backend=backend)
+            new_table = SqlitDataTable(
+                id=new_id,
+                zebra_stripes=True,
+                backend=backend,
+                max_column_content_width=MAX_COLUMN_CONTENT_WIDTH,
+            )
             container.mount(new_table, after=old_table)
             old_table.remove()
             return
@@ -279,7 +297,12 @@ class QueryMixin:
         backend = ArrowBackend(arrow_table)
 
         # Create and mount new table, then remove old
-        new_table = SqlitDataTable(id=new_id, zebra_stripes=True, backend=backend)
+        new_table = SqlitDataTable(
+            id=new_id,
+            zebra_stripes=True,
+            backend=backend,
+            max_column_content_width=MAX_COLUMN_CONTENT_WIDTH,
+        )
         container.mount(new_table, after=old_table)
         old_table.remove()
 
