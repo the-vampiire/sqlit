@@ -18,9 +18,9 @@ except ImportError:
     __version__ = "0.0.0.dev"
 
 if TYPE_CHECKING:
-    from .app import SSMSTUI
+    from sqlit.domains.shell.app.main import SSMSTUI
     from .cli import main
-    from .config import AuthType, ConnectionConfig
+    from sqlit.domains.connections.domain.config import AuthType, ConnectionConfig
     from importlib.metadata import PackageNotFoundError  # noqa: F401
 
 
@@ -31,15 +31,15 @@ def __getattr__(name: str) -> Any:
 
         return main
     if name == "SSMSTUI":
-        from .app import SSMSTUI
+        from sqlit.domains.shell.app.main import SSMSTUI
 
         return SSMSTUI
     if name == "AuthType":
-        from .config import AuthType
+        from sqlit.domains.connections.domain.config import AuthType
 
         return AuthType
     if name == "ConnectionConfig":
-        from .config import ConnectionConfig
+        from sqlit.domains.connections.domain.config import ConnectionConfig
 
         return ConnectionConfig
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

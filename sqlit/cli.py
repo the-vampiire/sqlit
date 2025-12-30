@@ -8,9 +8,9 @@ import os
 import sys
 import time
 
-from .cli_helpers import add_schema_arguments, build_connection_config_from_args
-from .config import AuthType, ConnectionConfig, DatabaseType
-from .db.providers import get_connection_schema, get_supported_db_types
+from sqlit.domains.connections.cli.helpers import add_schema_arguments, build_connection_config_from_args
+from sqlit.domains.connections.domain.config import AuthType, ConnectionConfig, DatabaseType
+from sqlit.domains.connections.providers.registry import get_connection_schema, get_supported_db_types
 
 
 def _extract_connection_url(argv: list[str]) -> tuple[str | None, list[str]]:
@@ -19,7 +19,7 @@ def _extract_connection_url(argv: list[str]) -> tuple[str | None, list[str]]:
     Looks for the first non-flag argument that looks like a connection URL.
     Returns (url, remaining_argv) where url is None if not found.
     """
-    from .url_parser import is_connection_url
+    from sqlit.domains.connections.app.url_parser import is_connection_url
 
     subcommands = {"connections", "connection", "connect", "query"}
     result_argv = []
@@ -321,12 +321,12 @@ def main() -> int:
     else:
         os.environ.pop("SQLIT_STARTUP_MARK", None)
     if args.command is None:
-        from .app import SSMSTUI
-        from .url_parser import parse_connection_url
+        from sqlit.domains.shell.app.main import SSMSTUI
+        from sqlit.domains.connections.app.url_parser import parse_connection_url
 
         mock_profile = None
         if args.mock:
-            from .mocks import get_mock_profile, list_mock_profiles
+            from sqlit.domains.connections.app.mocks import get_mock_profile, list_mock_profiles
 
             mock_profile = get_mock_profile(args.mock)
             if mock_profile is None:
@@ -352,16 +352,16 @@ def main() -> int:
         app.run()
         return 0
 
-    from .commands import (
+    from sqlit.domains.connections.cli.commands import (
         cmd_connection_create,
         cmd_connection_delete,
         cmd_connection_edit,
         cmd_connection_list,
-        cmd_query,
     )
+    from sqlit.domains.query.cli.commands import cmd_query
 
     if args.command == "connect":
-        from .app import SSMSTUI
+        from sqlit.domains.shell.app.main import SSMSTUI
 
         db_type = getattr(args, "provider", None)
         if not db_type:
@@ -370,7 +370,7 @@ def main() -> int:
 
         mock_profile = None
         if args.mock:
-            from .mocks import get_mock_profile, list_mock_profiles
+            from sqlit.domains.connections.app.mocks import get_mock_profile, list_mock_profiles
 
             mock_profile = get_mock_profile(args.mock)
             if mock_profile is None:
@@ -412,7 +412,7 @@ def main() -> int:
         return cmd_query(args)
 
     if args.command == "docker":
-        from .commands import cmd_docker_list
+        from sqlit.domains.connections.cli.commands import cmd_docker_list
 
         if args.docker_command == "list":
             return cmd_docker_list(args)

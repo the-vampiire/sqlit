@@ -7,8 +7,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from textual.widgets import Input
 
-from sqlit.config import ConnectionConfig
-from sqlit.ui.screens.password_input import PasswordInputScreen
+from sqlit.domains.connections.domain.config import ConnectionConfig
+from sqlit.domains.connections.ui.screens.password_input import PasswordInputScreen
 
 
 class TestPasswordInputScreen:
@@ -184,8 +184,8 @@ class TestConnectionPasswordFlow:
     @pytest.mark.asyncio
     async def test_connect_with_none_password_shows_prompt(self) -> None:
         """Connecting with None password shows password input screen."""
-        from sqlit.app import SSMSTUI
-        from sqlit.mocks import get_mock_profile
+        from sqlit.domains.shell.app.main import SSMSTUI
+        from sqlit.domains.connections.app.mocks import get_mock_profile
 
         mock_profile = get_mock_profile("empty")
         app = SSMSTUI(mock_profile=mock_profile)
@@ -212,8 +212,8 @@ class TestConnectionPasswordFlow:
     @pytest.mark.asyncio
     async def test_connect_with_stored_password_no_prompt(self) -> None:
         """Connecting with stored password doesn't show prompt."""
-        from sqlit.app import SSMSTUI
-        from sqlit.mocks import get_mock_profile
+        from sqlit.domains.shell.app.main import SSMSTUI
+        from sqlit.domains.connections.app.mocks import get_mock_profile
 
         mock_profile = get_mock_profile("empty")
         app = SSMSTUI(mock_profile=mock_profile)
@@ -249,8 +249,8 @@ class TestConnectionPasswordFlow:
     @pytest.mark.asyncio
     async def test_ssh_password_prompt_before_db_password(self) -> None:
         """SSH password is prompted before database password."""
-        from sqlit.app import SSMSTUI
-        from sqlit.mocks import get_mock_profile
+        from sqlit.domains.shell.app.main import SSMSTUI
+        from sqlit.domains.connections.app.mocks import get_mock_profile
 
         mock_profile = get_mock_profile("empty")
         app = SSMSTUI(mock_profile=mock_profile)
@@ -282,8 +282,8 @@ class TestConnectionPasswordFlow:
     @pytest.mark.asyncio
     async def test_cancel_password_prompt_aborts_connection(self) -> None:
         """Cancelling password prompt aborts the connection."""
-        from sqlit.app import SSMSTUI
-        from sqlit.mocks import get_mock_profile
+        from sqlit.domains.shell.app.main import SSMSTUI
+        from sqlit.domains.connections.app.mocks import get_mock_profile
 
         mock_profile = get_mock_profile("empty")
         app = SSMSTUI(mock_profile=mock_profile)
@@ -316,8 +316,8 @@ class TestConnectionPasswordFlow:
     @pytest.mark.asyncio
     async def test_password_from_prompt_used_for_connection(self) -> None:
         """Password entered in prompt is used for connection."""
-        from sqlit.app import SSMSTUI
-        from sqlit.mocks import get_mock_profile
+        from sqlit.domains.shell.app.main import SSMSTUI
+        from sqlit.domains.connections.app.mocks import get_mock_profile
 
         mock_profile = get_mock_profile("empty")
         app = SSMSTUI(mock_profile=mock_profile)
@@ -373,8 +373,8 @@ class TestConnectionPasswordFlow:
     @pytest.mark.asyncio
     async def test_file_based_database_no_password_prompt(self) -> None:
         """File-based databases (SQLite) don't prompt for password."""
-        from sqlit.app import SSMSTUI
-        from sqlit.mocks import get_mock_profile
+        from sqlit.domains.shell.app.main import SSMSTUI
+        from sqlit.domains.connections.app.mocks import get_mock_profile
 
         mock_profile = get_mock_profile("sqlite-demo")
         app = SSMSTUI(mock_profile=mock_profile)

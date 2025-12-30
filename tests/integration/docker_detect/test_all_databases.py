@@ -329,7 +329,7 @@ class TestAllDatabases:
     )
     def test_database_detection(self, container):
         """Test that database container is correctly detected."""
-        from sqlit.services.docker_detector import detect_database_containers
+        from sqlit.domains.connections.discovery.docker_detector import detect_database_containers
 
         container_obj, config = container
 
@@ -373,7 +373,7 @@ class TestAllDatabases:
     )
     def test_connection_config_conversion(self, container):
         """Test that detected container converts to valid ConnectionConfig."""
-        from sqlit.services.docker_detector import (
+        from sqlit.domains.connections.discovery.docker_detector import (
             container_to_connection_config,
             detect_database_containers,
         )
@@ -421,7 +421,7 @@ class TestEdgeCases:
         if not request.config.getoption("--run-docker-container", default=False):
             pytest.skip("Use --run-docker-container to run container tests")
 
-        from sqlit.services.docker_detector import detect_database_containers
+        from sqlit.domains.connections.discovery.docker_detector import detect_database_containers
 
         container_name = "sqlit-test-no-ports"
 
@@ -467,7 +467,7 @@ class TestEdgeCases:
         if not request.config.getoption("--run-docker-container", default=False):
             pytest.skip("Use --run-docker-container to run container tests")
 
-        from sqlit.services.docker_detector import detect_database_containers
+        from sqlit.domains.connections.discovery.docker_detector import detect_database_containers
 
         containers = []
         container_names = ["sqlit-test-pg1", "sqlit-test-pg2", "sqlit-test-pg3"]

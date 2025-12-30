@@ -8,8 +8,8 @@ from __future__ import annotations
 
 import pytest
 
-from sqlit.db.providers import get_adapter_class
-from sqlit.services.docker_detector import (
+from sqlit.domains.connections.providers.registry import get_adapter_class
+from sqlit.domains.connections.discovery.docker_detector import (
     _get_container_credentials,
     _get_db_type_from_image,
 )

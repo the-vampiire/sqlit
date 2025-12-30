@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from sqlit.config import ConnectionConfig
+from sqlit.domains.connections.domain.config import ConnectionConfig
 
 from .conftest import ConnectionScreenTestApp
 

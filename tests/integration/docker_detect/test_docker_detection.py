@@ -18,7 +18,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from sqlit.services.docker_detector import (
+from sqlit.domains.connections.discovery.docker_detector import (
     DockerStatus,
     detect_database_containers,
     get_docker_status,
@@ -222,7 +222,7 @@ class TestWithTemporaryContainer:
 
     def test_container_to_connection_config(self, postgres_container):
         """Test converting detected container to ConnectionConfig."""
-        from sqlit.services.docker_detector import container_to_connection_config
+        from sqlit.domains.connections.discovery.docker_detector import container_to_connection_config
 
         time.sleep(1)
 

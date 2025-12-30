@@ -68,9 +68,9 @@ async def _run_flow(*, force_fail: bool, db_type: str) -> None:
     else:
         os.environ.pop("SQLIT_INSTALL_FORCE_FAIL", None)
 
-    from sqlit.app import SSMSTUI
-    from sqlit.config import ConnectionConfig
-    from sqlit.ui.screens.connection import ConnectionScreen
+    from sqlit.domains.shell.app.main import SSMSTUI
+    from sqlit.domains.connections.domain.config import ConnectionConfig
+    from sqlit.domains.connections.ui.screens.connection import ConnectionScreen
 
     if db_type == "postgresql":
         config = ConnectionConfig(

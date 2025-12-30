@@ -7,6 +7,7 @@ Run with: pytest tests/performance/ -v --benchmark-only
 from __future__ import annotations
 
 import time
+from contextlib import contextmanager
 from typing import Any
 from unittest.mock import patch
 
@@ -17,8 +18,8 @@ try:
 except ImportError:
     Faker = None  # type: ignore
 
-from sqlit.app import SSMSTUI
-from sqlit.config import ConnectionConfig
+from sqlit.domains.shell.app.main import SSMSTUI
+from sqlit.domains.connections.domain.config import ConnectionConfig
 
 from ..ui.mocks import MockConnectionStore, MockSettingsStore, create_test_connection
 
@@ -101,12 +102,16 @@ def mock_app_context():
     mock_connections = MockConnectionStore(connections)
     mock_settings = MockSettingsStore({"theme": "tokyo-night"})
 
-    return patch.multiple(
-        "sqlit.config",
-        load_connections=mock_connections.load_all,
-        load_settings=mock_settings.load_all,
-        save_settings=mock_settings.save_all,
-    )
+    @contextmanager
+    def _context():
+        with (
+            patch("sqlit.domains.shell.app.main.load_connections", mock_connections.load_all),
+            patch("sqlit.domains.shell.app.theme_manager.load_settings", mock_settings.load_all),
+            patch("sqlit.domains.shell.app.theme_manager.save_settings", mock_settings.save_all),
+        ):
+            yield
+
+    return _context()
 
 
 class TestDataTableRenderingPerformance:

@@ -30,8 +30,8 @@ except ImportError:
     HAS_BOTO3 = False
 
 try:
-    from sqlit.config import ConnectionConfig
-    from sqlit.db.adapters.athena import AthenaAdapter
+    from sqlit.domains.connections.domain.config import ConnectionConfig
+    from sqlit.domains.connections.providers.athena.adapter import AthenaAdapter
     HAS_ADAPTER = True
 except ImportError:
     HAS_ADAPTER = False

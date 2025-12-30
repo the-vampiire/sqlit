@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import pytest
 
-from sqlit.app import SSMSTUI
-from sqlit.keymap import get_keymap
-from sqlit.ui.screens import ConfirmScreen, ErrorScreen, HelpScreen
+from sqlit.domains.shell.app.main import SSMSTUI
+from sqlit.domains.shell.app.keymap import get_keymap
+from sqlit.shared.ui.screens.confirm import ConfirmScreen
+from sqlit.shared.ui.screens.error import ErrorScreen
+from sqlit.domains.shell.ui.screens.help import HelpScreen
 
 
 class TestDialogKeybindings:

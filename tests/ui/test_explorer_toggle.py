@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import pytest
 
-from sqlit.app import SSMSTUI
-from sqlit.ui.screens import ConfirmScreen, LeaderMenuScreen
+from sqlit.domains.shell.app.main import SSMSTUI
+from sqlit.shared.ui.screens.confirm import ConfirmScreen
+from sqlit.domains.shell.ui.screens.leader_menu import LeaderMenuScreen
 
 
 class TestLeaderMenu:

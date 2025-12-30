@@ -41,7 +41,7 @@ class TestMSSQLAdapterNoCrossDatabaseReferences:
     @pytest.fixture
     def adapter(self, mock_mssql):
         """Create an MSSQL adapter instance."""
-        from sqlit.db.adapters.mssql import SQLServerAdapter
+        from sqlit.domains.connections.providers.mssql.adapter import SQLServerAdapter
         return SQLServerAdapter()
 
     @pytest.fixture
@@ -198,7 +198,7 @@ class TestMSSQLAdapterQueries:
 
     @pytest.fixture
     def adapter(self, mock_mssql):
-        from sqlit.db.adapters.mssql import SQLServerAdapter
+        from sqlit.domains.connections.providers.mssql.adapter import SQLServerAdapter
         return SQLServerAdapter()
 
     def test_get_tables_query_structure(self, adapter):

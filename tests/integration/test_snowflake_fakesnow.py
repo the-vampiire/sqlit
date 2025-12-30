@@ -6,8 +6,8 @@ import pytest
 import fakesnow
 from unittest.mock import patch, MagicMock
 
-from sqlit.db.adapters.snowflake import SnowflakeAdapter
-from sqlit.config import ConnectionConfig
+from sqlit.domains.connections.providers.snowflake.adapter import SnowflakeAdapter
+from sqlit.domains.connections.domain.config import ConnectionConfig
 
 class TestSnowflakeFakeSnow:
     """Integration tests using fakesnow to simulate Snowflake locally."""

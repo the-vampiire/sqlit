@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import pytest
 
-from sqlit.app import SSMSTUI
-from sqlit.keymap import get_keymap
-from sqlit.widgets import VimMode
+from sqlit.domains.shell.app.main import SSMSTUI
+from sqlit.domains.shell.app.keymap import get_keymap
+from sqlit.shared.ui.widgets import VimMode
 
 
 class TestInsertModeKeybindings:

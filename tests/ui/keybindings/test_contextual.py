@@ -6,8 +6,8 @@ from unittest.mock import patch
 
 import pytest
 
-from sqlit.app import SSMSTUI
-from sqlit.keymap import get_keymap
+from sqlit.domains.shell.app.main import SSMSTUI
+from sqlit.domains.shell.app.keymap import get_keymap
 
 from ..mocks import MockConnectionStore, MockSettingsStore, create_test_connection
 
@@ -66,9 +66,9 @@ class TestContextualKeybindings:
         mock_settings = MockSettingsStore({"theme": "tokyo-night"})
 
         with (
-            patch("sqlit.app.load_connections", mock_connections.load_all),
-            patch("sqlit.theme_manager.load_settings", mock_settings.load_all),
-            patch("sqlit.theme_manager.save_settings", mock_settings.save_all),
+            patch("sqlit.domains.shell.app.main.load_connections", mock_connections.load_all),
+            patch("sqlit.domains.shell.app.theme_manager.load_settings", mock_settings.load_all),
+            patch("sqlit.domains.shell.app.theme_manager.save_settings", mock_settings.save_all),
         ):
             app = SSMSTUI()
 

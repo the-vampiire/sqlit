@@ -2,7 +2,7 @@
 
 import pytest
 
-from sqlit.sql_completion import (
+from sqlit.domains.query.completion import (
     SuggestionType,
     extract_delete_table_refs,
     get_completions,

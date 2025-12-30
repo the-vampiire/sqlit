@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
-from sqlit.ui.mixins.tree import TreeMixin
-from sqlit.ui.tree_nodes import FolderNode, LoadingNode, SchemaNode, TableNode
+from sqlit.domains.explorer.ui.mixins.tree import TreeMixin
+from sqlit.domains.explorer.domain.tree_nodes import FolderNode, LoadingNode, SchemaNode, TableNode
 
 
 class MockTreeNode:

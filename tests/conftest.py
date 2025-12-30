@@ -23,7 +23,7 @@ _settings_file.write_text('{"allow_plaintext_credentials": true}')
 @pytest.fixture(autouse=True)
 def _reset_mock_docker_containers():
     """Ensure mock Docker containers do not leak between tests."""
-    from sqlit.mock_settings import set_mock_docker_containers
+    from sqlit.domains.connections.app.mock_settings import set_mock_docker_containers
 
     set_mock_docker_containers(None)
     yield
@@ -1716,7 +1716,7 @@ def d1_db(d1_server_ready: bool) -> str:
     if not d1_server_ready:
         pytest.skip("D1 (miniflare) is not available")
 
-    from sqlit.db.adapters.d1 import D1Adapter
+    from sqlit.domains.connections.providers.d1.adapter import D1Adapter
 
     adapter = D1Adapter()
     config = {
@@ -1726,7 +1726,7 @@ def d1_db(d1_server_ready: bool) -> str:
         "password": D1_API_TOKEN,
         "database": D1_DATABASE,
     }
-    from sqlit.config import ConnectionConfig
+    from sqlit.domains.connections.domain.config import ConnectionConfig
 
     conn_config = ConnectionConfig(**config)
     try:

@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from sqlit.state_machine import QueryExecutingState, UIStateMachine
-from sqlit.ui.tree_nodes import ConnectionNode
-from sqlit.widgets import VimMode
+from sqlit.domains.shell.app.state_machine import QueryExecutingState, UIStateMachine
+from sqlit.domains.explorer.domain.tree_nodes import ConnectionNode
+from sqlit.shared.ui.widgets import VimMode
 
 
 class MockConfig:

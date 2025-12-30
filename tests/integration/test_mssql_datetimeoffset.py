@@ -20,14 +20,14 @@ MSSQL_DATABASE = os.environ.get("MSSQL_DATABASE", "master")
 @pytest.fixture
 def mssql_adapter():
     """Get MSSQL adapter instance."""
-    from sqlit.db.adapters.mssql import SQLServerAdapter
+    from sqlit.domains.connections.providers.mssql.adapter import SQLServerAdapter
     return SQLServerAdapter()
 
 
 @pytest.fixture
 def mssql_config():
     """Get MSSQL connection config."""
-    from sqlit.config import ConnectionConfig
+    from sqlit.domains.connections.domain.config import ConnectionConfig
     return ConnectionConfig(
         name="test-mssql-dto",
         db_type="mssql",

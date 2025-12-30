@@ -9,8 +9,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from sqlit.config import ConnectionConfig
-from sqlit.services.credentials import (
+from sqlit.domains.connections.domain.config import ConnectionConfig
+from sqlit.domains.connections.app.credentials import (
     KEYRING_SERVICE_NAME,
     CredentialsService,
     KeyringCredentialsService,
@@ -288,8 +288,8 @@ class TestGlobalCredentialsService:
         new_service = get_credentials_service()
         assert new_service is not service
 
-    @patch("sqlit.services.credentials.KeyringCredentialsService")
-    @patch("sqlit.services.credentials.is_keyring_usable", return_value=True)
+    @patch("sqlit.domains.connections.app.credentials.KeyringCredentialsService")
+    @patch("sqlit.domains.connections.app.credentials.is_keyring_usable", return_value=True)
     def test_default_service_is_keyring(self, _mock_usable: MagicMock, mock_keyring_class: MagicMock) -> None:
         """Test that default service is keyring-based."""
         mock_instance = MagicMock()
@@ -299,8 +299,8 @@ class TestGlobalCredentialsService:
 
         assert service is mock_instance
 
-    @patch("sqlit.services.credentials.is_keyring_usable", return_value=False)
-    @patch("sqlit.stores.settings.load_settings", return_value={})
+    @patch("sqlit.domains.connections.app.credentials.is_keyring_usable", return_value=False)
+    @patch("sqlit.domains.shell.store.settings.load_settings", return_value={})
     def test_fallback_to_in_memory_when_no_consent(
         self, _mock_settings: MagicMock, _mock_usable: MagicMock
     ) -> None:
@@ -309,8 +309,8 @@ class TestGlobalCredentialsService:
         service = get_credentials_service()
         assert isinstance(service, PlaintextCredentialsService)
 
-    @patch("sqlit.services.credentials.is_keyring_usable", return_value=False)
-    @patch("sqlit.stores.settings.load_settings", return_value={"allow_plaintext_credentials": True})
+    @patch("sqlit.domains.connections.app.credentials.is_keyring_usable", return_value=False)
+    @patch("sqlit.domains.shell.store.settings.load_settings", return_value={"allow_plaintext_credentials": True})
     def test_plaintext_file_when_consent_recorded(
         self, _mock_settings: MagicMock, _mock_usable: MagicMock
     ) -> None:
@@ -321,7 +321,7 @@ class TestGlobalCredentialsService:
 
 
 def test_plaintext_file_credentials_service_roundtrip(tmp_path, monkeypatch):
-    monkeypatch.setattr("sqlit.services.credentials.CONFIG_DIR", tmp_path)
+    monkeypatch.setattr("sqlit.domains.connections.app.credentials.CONFIG_DIR", tmp_path)
     service = PlaintextFileCredentialsService()
     service.set_password("conn", "dbpass")
     service.set_ssh_password("conn", "sshpass")
@@ -346,8 +346,8 @@ class TestConnectionStoreWithCredentials:
 
     def _create_store(self) -> "ConnectionStore":
         """Create a ConnectionStore with the temp directory."""
-        from sqlit.stores.base import JSONFileStore
-        from sqlit.stores.connections import ConnectionStore
+        from sqlit.shared.core.store import JSONFileStore
+        from sqlit.domains.connections.store.connections import ConnectionStore
 
         # Create a subclass that uses our temp path
         class TempConnectionStore(ConnectionStore):

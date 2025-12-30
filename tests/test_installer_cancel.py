@@ -4,8 +4,8 @@ import subprocess
 import threading
 from unittest.mock import MagicMock, patch
 
-from sqlit.db.exceptions import MissingDriverError
-from sqlit.services.installer import Installer
+from sqlit.domains.connections.providers.exceptions import MissingDriverError
+from sqlit.domains.connections.app.installer import Installer
 
 
 class _FakeProcess:
@@ -51,8 +51,8 @@ def test_installer_cancel_terminates_process():
     fake_strategy.auto_install_command = ["pip", "install", "psycopg2-binary"]
 
     with (
-        patch("sqlit.services.installer.subprocess.Popen", new=fake_popen),
-        patch("sqlit.services.installer.detect_strategy", return_value=fake_strategy),
+        patch("sqlit.domains.connections.app.installer.subprocess.Popen", new=fake_popen),
+        patch("sqlit.domains.connections.app.installer.detect_strategy", return_value=fake_strategy),
     ):
         result_holder: dict[str, tuple[bool, str, MissingDriverError]] = {}
 
