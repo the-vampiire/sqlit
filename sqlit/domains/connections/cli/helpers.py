@@ -7,7 +7,7 @@ from functools import lru_cache
 from typing import Any, Iterable
 
 from sqlit.domains.connections.domain.config import ConnectionConfig
-from sqlit.domains.connections.providers.schema_catalog import ConnectionSchema, FieldType
+from sqlit.domains.connections.providers.schema_helpers import ConnectionSchema, FieldType
 
 @lru_cache(maxsize=1)
 def _get_connection_arg_names() -> set[str]:

@@ -1,13 +1,20 @@
 """Provider registration."""
 
+from sqlit.domains.connections.providers.adapter_provider import build_adapter_provider
 from sqlit.domains.connections.providers.catalog import register_provider
 from sqlit.domains.connections.providers.docker import DockerDetector
 from sqlit.domains.connections.providers.model import ProviderSpec
+from sqlit.domains.connections.providers.cockroachdb.schema import SCHEMA
+
+
+def _provider_factory(spec: ProviderSpec):
+    from sqlit.domains.connections.providers.cockroachdb.adapter import CockroachDBAdapter
+
+    return build_adapter_provider(spec, SCHEMA, CockroachDBAdapter())
 
 SPEC = ProviderSpec(
     db_type="cockroachdb",
     display_name="CockroachDB",
-    adapter_path=("sqlit.domains.connections.providers.cockroachdb.adapter", "CockroachDBAdapter"),
     schema_path=("sqlit.domains.connections.providers.cockroachdb.schema", "SCHEMA"),
     supports_ssh=True,
     is_file_based=False,
@@ -16,6 +23,7 @@ SPEC = ProviderSpec(
     requires_auth=False,
     badge_label="CRDB",
     url_schemes=("cockroachdb", "cockroach"),
+    provider_factory=_provider_factory,
     docker_detector=DockerDetector(
         image_patterns=("cockroachdb",),
         env_vars={

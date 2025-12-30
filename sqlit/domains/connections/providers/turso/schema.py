@@ -1,6 +1,6 @@
 """Connection schema for Turso."""
 
-from sqlit.domains.connections.providers.schema_catalog import ConnectionSchema, FieldType, SchemaField
+from sqlit.domains.connections.providers.schema_helpers import ConnectionSchema, FieldType, SchemaField
 
 
 SCHEMA = ConnectionSchema(

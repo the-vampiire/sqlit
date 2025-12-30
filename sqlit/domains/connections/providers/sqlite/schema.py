@@ -1,6 +1,6 @@
 """Connection schema for SQLite."""
 
-from sqlit.domains.connections.providers.schema_catalog import ConnectionSchema, _file_path_field
+from sqlit.domains.connections.providers.schema_helpers import ConnectionSchema, _file_path_field
 
 
 SCHEMA = ConnectionSchema(

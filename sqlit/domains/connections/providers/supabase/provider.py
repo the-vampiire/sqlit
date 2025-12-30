@@ -1,7 +1,9 @@
 """Provider registration."""
 
+from sqlit.domains.connections.providers.adapter_provider import build_adapter_provider
 from sqlit.domains.connections.providers.catalog import register_provider
 from sqlit.domains.connections.providers.model import ProviderSpec
+from sqlit.domains.connections.providers.supabase.schema import SCHEMA
 
 
 def _supabase_display_info(config: object) -> str:
@@ -11,10 +13,16 @@ def _supabase_display_info(config: object) -> str:
         return f"{name} ({region})"
     return getattr(config, "name", "Supabase")
 
+
+def _provider_factory(spec: ProviderSpec):
+    from sqlit.domains.connections.providers.supabase.adapter import SupabaseAdapter
+
+    return build_adapter_provider(spec, SCHEMA, SupabaseAdapter())
+
+
 SPEC = ProviderSpec(
     db_type="supabase",
     display_name="Supabase",
-    adapter_path=("sqlit.domains.connections.providers.supabase.adapter", "SupabaseAdapter"),
     schema_path=("sqlit.domains.connections.providers.supabase.schema", "SCHEMA"),
     supports_ssh=False,
     is_file_based=False,
@@ -23,6 +31,7 @@ SPEC = ProviderSpec(
     requires_auth=True,
     badge_label="Supabase",
     display_info=_supabase_display_info,
+    provider_factory=_provider_factory,
 )
 
 register_provider(SPEC)

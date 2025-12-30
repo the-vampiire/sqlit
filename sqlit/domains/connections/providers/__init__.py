@@ -31,7 +31,7 @@ from sqlit.domains.connections.providers.metadata import (
     supports_ssh,
 )
 from sqlit.domains.connections.providers.model import ProviderSpec
-from sqlit.domains.connections.providers.schema_catalog import ConnectionSchema, FieldType, SchemaField, SelectOption
+from sqlit.domains.connections.providers.schema_helpers import ConnectionSchema, FieldType, SchemaField, SelectOption
 
 __all__ = [
     "ColumnInfo",

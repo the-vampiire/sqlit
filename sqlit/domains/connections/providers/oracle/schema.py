@@ -1,6 +1,6 @@
 """Connection schema for Oracle."""
 
-from sqlit.domains.connections.providers.schema_catalog import (
+from sqlit.domains.connections.providers.schema_helpers import (
     ConnectionSchema,
     FieldType,
     SSH_FIELDS,

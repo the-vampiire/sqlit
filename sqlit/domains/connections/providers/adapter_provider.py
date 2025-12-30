@@ -1,9 +1,8 @@
-"""Legacy adapter-based provider construction."""
+"""Adapter-based provider construction."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from importlib import import_module
 from typing import TYPE_CHECKING, Any, Iterable, cast
 
 if TYPE_CHECKING:
@@ -18,16 +17,8 @@ from sqlit.domains.connections.providers.model import (
     ProviderSpec,
     SchemaCapabilities,
 )
-from sqlit.domains.connections.providers.schema_catalog import ConnectionSchema
+from sqlit.domains.connections.providers.schema_helpers import ConnectionSchema
 from sqlit.domains.connections.providers.validation import SchemaConfigValidator
-
-
-def _load_adapter_class(module_name: str, class_name: str) -> type:
-    module = import_module(module_name)
-    adapter_class = getattr(module, class_name, None)
-    if not isinstance(adapter_class, type):
-        raise ImportError(f"Adapter class '{class_name}' not found in {module_name}")
-    return adapter_class
 
 
 @dataclass
@@ -81,12 +72,7 @@ def _default_display_info(config: ConnectionConfig) -> str:
     return config.name
 
 
-def build_provider_from_adapter(spec: ProviderSpec, schema: ConnectionSchema) -> DatabaseProvider:
-    if spec.adapter_path is None:
-        raise ValueError(f"Provider '{spec.db_type}' is missing adapter_path")
-
-    adapter_class = _load_adapter_class(*spec.adapter_path)
-    adapter = adapter_class()
+def build_adapter_provider(spec: ProviderSpec, schema: ConnectionSchema, adapter: Any) -> DatabaseProvider:
     url_schemes = spec.url_schemes
 
     driver = DriverDescriptor(

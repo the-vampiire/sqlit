@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from sqlit.domains.connections.providers.driver import DriverDescriptor
     from sqlit.domains.connections.providers.explorer_nodes import ExplorerNodeProvider
     from sqlit.domains.connections.providers.docker import DockerDetector
-    from sqlit.domains.connections.providers.schema_catalog import ConnectionSchema
+    from sqlit.domains.connections.providers.schema_helpers import ConnectionSchema
 
 
 @dataclass(frozen=True)
@@ -118,7 +118,6 @@ class ConfigValidator(Protocol):
 class ProviderSpec:
     db_type: str
     display_name: str
-    adapter_path: tuple[str, str] | None
     schema_path: tuple[str, str]
     supports_ssh: bool = True
     is_file_based: bool = False

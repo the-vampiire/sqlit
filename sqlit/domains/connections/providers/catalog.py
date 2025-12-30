@@ -7,9 +7,8 @@ from importlib import import_module
 import pkgutil
 from typing import Iterable, cast
 
-from sqlit.domains.connections.providers.legacy import build_provider_from_adapter
 from sqlit.domains.connections.providers.model import DatabaseProvider, ProviderSpec
-from sqlit.domains.connections.providers.schema_catalog import ConnectionSchema
+from sqlit.domains.connections.providers.schema_helpers import ConnectionSchema
 
 _PROVIDERS: dict[str, ProviderSpec] = {}
 _DISCOVERED = False
@@ -81,10 +80,9 @@ def get_all_schemas() -> dict[str, ConnectionSchema]:
 @lru_cache(maxsize=None)
 def get_provider(db_type: str) -> DatabaseProvider:
     spec = get_provider_spec(db_type)
-    schema = get_provider_schema(db_type)
-    if spec.provider_factory:
-        return spec.provider_factory(spec)
-    return build_provider_from_adapter(spec, schema)
+    if not spec.provider_factory:
+        raise ValueError(f"Provider '{db_type}' does not define a provider_factory")
+    return spec.provider_factory(spec)
 
 
 @lru_cache(maxsize=1)

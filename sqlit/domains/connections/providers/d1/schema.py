@@ -1,6 +1,6 @@
 """Connection schema for Cloudflare D1."""
 
-from sqlit.domains.connections.providers.schema_catalog import ConnectionSchema, FieldType, SchemaField
+from sqlit.domains.connections.providers.schema_helpers import ConnectionSchema, FieldType, SchemaField
 
 
 SCHEMA = ConnectionSchema(

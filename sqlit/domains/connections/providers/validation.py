@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from sqlit.domains.connections.providers.schema_catalog import ConnectionSchema, FieldType
+from sqlit.domains.connections.providers.schema_helpers import ConnectionSchema, FieldType
 from sqlit.domains.connections.providers.model import ConfigValidator
 
 

@@ -1,13 +1,20 @@
 """Provider registration."""
 
+from sqlit.domains.connections.providers.adapter_provider import build_adapter_provider
 from sqlit.domains.connections.providers.catalog import register_provider
 from sqlit.domains.connections.providers.docker import DockerDetector
 from sqlit.domains.connections.providers.model import ProviderSpec
+from sqlit.domains.connections.providers.mssql.schema import SCHEMA
+
+
+def _provider_factory(spec: ProviderSpec):
+    from sqlit.domains.connections.providers.mssql.adapter import SQLServerAdapter
+
+    return build_adapter_provider(spec, SCHEMA, SQLServerAdapter())
 
 SPEC = ProviderSpec(
     db_type="mssql",
     display_name="SQL Server",
-    adapter_path=("sqlit.domains.connections.providers.mssql.adapter", "SQLServerAdapter"),
     schema_path=("sqlit.domains.connections.providers.mssql.schema", "SCHEMA"),
     supports_ssh=True,
     is_file_based=False,
@@ -16,6 +23,7 @@ SPEC = ProviderSpec(
     requires_auth=True,
     badge_label="MSSQL",
     url_schemes=("mssql", "sqlserver"),
+    provider_factory=_provider_factory,
     docker_detector=DockerDetector(
         image_patterns=("mcr.microsoft.com/mssql",),
         env_vars={

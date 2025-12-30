@@ -57,6 +57,8 @@ class ConnectionMixin:
             return None
         getter = getattr(data, "get_connection_config", None)
         if callable(getter):
+            from sqlit.domains.connections.domain.config import ConnectionConfig
+
             value = getter()
             return value if isinstance(value, ConnectionConfig) else None
         return None

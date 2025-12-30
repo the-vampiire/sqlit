@@ -1,13 +1,20 @@
 """Provider registration."""
 
+from sqlit.domains.connections.providers.adapter_provider import build_adapter_provider
 from sqlit.domains.connections.providers.catalog import register_provider
 from sqlit.domains.connections.providers.docker import DockerDetector
 from sqlit.domains.connections.providers.model import ProviderSpec
+from sqlit.domains.connections.providers.postgresql.schema import SCHEMA
+
+
+def _provider_factory(spec: ProviderSpec):
+    from sqlit.domains.connections.providers.postgresql.adapter import PostgreSQLAdapter
+
+    return build_adapter_provider(spec, SCHEMA, PostgreSQLAdapter())
 
 SPEC = ProviderSpec(
     db_type="postgresql",
     display_name="PostgreSQL",
-    adapter_path=("sqlit.domains.connections.providers.postgresql.adapter", "PostgreSQLAdapter"),
     schema_path=("sqlit.domains.connections.providers.postgresql.schema", "SCHEMA"),
     supports_ssh=True,
     is_file_based=False,
@@ -16,6 +23,7 @@ SPEC = ProviderSpec(
     requires_auth=True,
     badge_label="PG",
     url_schemes=("postgresql", "postgres"),
+    provider_factory=_provider_factory,
     docker_detector=DockerDetector(
         image_patterns=("postgres",),
         env_vars={
