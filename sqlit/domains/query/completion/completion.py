@@ -307,6 +307,9 @@ def get_completions(
     if re.search(r"\bOVER\s*\(\s*\w*$", clean_before, re.IGNORECASE):
         return fuzzy_match(current_word, ["PARTITION", "ORDER", "ROWS", "RANGE"])
 
+    # Special-case: after SELECT * prefer FROM and hide redundant "*"
+    prefer_from = False
+
     # Fall back to context-based completion
     suggestions = get_context(sql, cursor_pos)
     if not suggestions:
@@ -329,6 +332,12 @@ def get_completions(
         elif suggestion.type == SuggestionType.COLUMN:
             # Check if we're in SELECT clause (before FROM) to add special keywords
             clause = find_current_clause(clean_before)
+            if not prefer_from and clause == "select":
+                if re.search(r"\bSELECT\s+\*\s+\w*$", clean_before, re.IGNORECASE) or re.search(
+                    r"\bSELECT\s+\*\s*$", clean_before, re.IGNORECASE
+                ):
+                    if not current_word or "from".startswith(current_word.lower()):
+                        prefer_from = True
             if clause == "select":
                 results.extend(SELECT_CLAUSE_KEYWORDS)
 
@@ -376,5 +385,10 @@ def get_completions(
         if r.lower() not in seen:
             seen.add(r.lower())
             unique_results.append(r)
+
+    if prefer_from:
+        unique_results = [r for r in unique_results if r != "*"]
+        if "FROM" not in unique_results:
+            unique_results.insert(0, "FROM")
 
     return fuzzy_match(current_word, unique_results)
