@@ -515,6 +515,10 @@ class TreeMixin(TreeSchemaMixin, TreeLabelMixin):
             return
 
         node = event.node
+        self._activate_tree_node(node)
+
+    def _activate_tree_node(self: TreeMixinHost, node: Any) -> None:
+        """Activate a tree node (connect to server, expand folder, etc.)."""
         if not node.data:
             return
 

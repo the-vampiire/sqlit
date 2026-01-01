@@ -56,10 +56,18 @@ class TreeFilterMixin:
         self._update_footer_bindings()
 
     def action_tree_filter_accept(self: TreeFilterMixinHost) -> None:
-        """Accept current filter selection and switch to navigation mode."""
-        self._tree_filter_typing = False
-        self.tree_filter_input.hide()
-        self._update_footer_bindings()
+        """Accept current filter selection, close filter, and activate the node."""
+        # Store current match before closing
+        current_node = None
+        if self._tree_filter_matches and self._tree_filter_match_index < len(self._tree_filter_matches):
+            current_node = self._tree_filter_matches[self._tree_filter_match_index]
+
+        # Close the filter
+        self.action_tree_filter_close()
+
+        # Activate the selected node (connect to server, expand folder, etc.)
+        if current_node and current_node.data:
+            self._activate_tree_node(current_node)
 
     def action_tree_filter_next(self: TreeFilterMixinHost) -> None:
         """Move to next filter match."""

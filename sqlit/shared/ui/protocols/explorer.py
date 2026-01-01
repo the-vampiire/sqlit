@@ -45,6 +45,9 @@ class ExplorerActionsProtocol(Protocol):
     def _get_node_kind(self, node: Any) -> str:
         ...
 
+    def _activate_tree_node(self, node: Any) -> None:
+        ...
+
     def _add_database_object_nodes(self, node: Any, database: str | None) -> None:
         ...
 
