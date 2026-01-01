@@ -166,7 +166,7 @@ class AzureCloudUIAdapter(CloudProviderUIAdapter):
             screen._rebuild_list()
 
     def _load_databases_worker(self, screen: Any, server: Any) -> None:
-        from sqlit.domains.connections.discovery.cloud_detector import load_databases_for_server
+        from sqlit.domains.connections.discovery.cloud.azure.discovery import load_databases_for_server
 
         databases = load_databases_for_server(server, use_cache=True)
         screen.app.call_from_thread(self._on_databases_loaded, screen, server, databases)
@@ -212,8 +212,10 @@ class AzureCloudUIAdapter(CloudProviderUIAdapter):
         subscription_id: str,
         new_index: int,
     ) -> None:
-        from sqlit.domains.connections.discovery.cloud_detector import (
+        from sqlit.domains.connections.discovery.cloud.azure.cache import (
             cache_subscriptions_and_servers,
+        )
+        from sqlit.domains.connections.discovery.cloud.azure.discovery import (
             detect_azure_sql_resources,
         )
 

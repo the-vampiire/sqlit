@@ -200,6 +200,74 @@ def _get_ssh_fields() -> tuple[SchemaField, ...]:
 SSH_FIELDS = _get_ssh_fields()
 
 
+def _tls_mode_is_custom(v: dict) -> bool:
+    mode = str(v.get("tls_mode", "default")).lower()
+    return mode not in {"", "default", "disable"}
+
+
+def _get_tls_mode_options() -> tuple[SelectOption, ...]:
+    return (
+        SelectOption("default", "Default (driver)"),
+        SelectOption("disable", "Disable"),
+        SelectOption("require", "Require (no verify)"),
+        SelectOption("verify-ca", "Verify CA"),
+        SelectOption("verify-full", "Verify Full"),
+    )
+
+
+def _get_tls_mode_field() -> SchemaField:
+    return SchemaField(
+        name="tls_mode",
+        label="TLS Mode",
+        field_type=FieldType.SELECT,
+        options=_get_tls_mode_options(),
+        default="default",
+        tab="tls",
+    )
+
+
+def _get_tls_cert_fields() -> tuple[SchemaField, ...]:
+    return (
+        SchemaField(
+            name="tls_ca",
+            label="CA Certificate",
+            field_type=FieldType.FILE,
+            placeholder="/path/to/ca.pem",
+            visible_when=_tls_mode_is_custom,
+            tab="tls",
+        ),
+        SchemaField(
+            name="tls_cert",
+            label="Client Certificate",
+            field_type=FieldType.FILE,
+            placeholder="/path/to/client.pem",
+            visible_when=_tls_mode_is_custom,
+            tab="tls",
+        ),
+        SchemaField(
+            name="tls_key",
+            label="Client Key",
+            field_type=FieldType.FILE,
+            placeholder="/path/to/client.key",
+            visible_when=_tls_mode_is_custom,
+            tab="tls",
+        ),
+        SchemaField(
+            name="tls_key_password",
+            label="Key Password",
+            field_type=FieldType.PASSWORD,
+            placeholder="(optional)",
+            visible_when=_tls_mode_is_custom,
+            tab="tls",
+        ),
+    )
+
+
+TLS_MODE_FIELD = _get_tls_mode_field()
+TLS_CERT_FIELDS = _get_tls_cert_fields()
+TLS_FIELDS = (TLS_MODE_FIELD,) + TLS_CERT_FIELDS
+
+
 def _get_aws_region_options() -> tuple[SelectOption, ...]:
     """AWS regions shared by Supabase, Athena, and other AWS-based services."""
     regions = (

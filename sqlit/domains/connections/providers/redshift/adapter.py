@@ -12,6 +12,12 @@ from sqlit.domains.connections.providers.adapters.base import (
     TableInfo,
     TriggerInfo,
 )
+from sqlit.domains.connections.providers.tls import (
+    TLS_MODE_DEFAULT,
+    TLS_MODE_DISABLE,
+    get_tls_files,
+    get_tls_mode,
+)
 
 if TYPE_CHECKING:
     from sqlit.domains.connections.domain.config import ConnectionConfig
@@ -96,6 +102,22 @@ class RedshiftAdapter(CursorBasedAdapter):
             # Standard password authentication
             connect_args["user"] = endpoint.username
             connect_args["password"] = endpoint.password
+
+        tls_mode = get_tls_mode(config)
+        tls_ca, tls_cert, tls_key, _ = get_tls_files(config)
+        has_tls_files = any([tls_ca, tls_cert, tls_key])
+        if tls_mode == TLS_MODE_DISABLE:
+            connect_args["ssl"] = False
+        elif tls_mode != TLS_MODE_DEFAULT or has_tls_files:
+            connect_args["ssl"] = True
+            if tls_mode != TLS_MODE_DEFAULT:
+                connect_args["sslmode"] = tls_mode
+            if tls_ca:
+                connect_args["sslrootcert"] = tls_ca
+            if tls_cert:
+                connect_args["sslcert"] = tls_cert
+            if tls_key:
+                connect_args["sslkey"] = tls_key
 
         conn = redshift_connector.connect(**connect_args)
         conn.autocommit = True

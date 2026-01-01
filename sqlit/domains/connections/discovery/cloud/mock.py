@@ -18,7 +18,7 @@ def is_mock_cloud_enabled() -> bool:
 
 def get_mock_azure_state() -> ProviderState:
     """Get mock Azure provider state with sample data."""
-    from ..cloud_detector import AzureSqlServer, AzureSubscription
+    from .azure.models import AzureSqlServer, AzureSubscription
 
     # Mock account
     account = AccountInfo(

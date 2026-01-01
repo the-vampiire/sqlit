@@ -36,9 +36,6 @@ class ConnectionStateProtocol(Protocol):
 
 
 class ConnectionActionsProtocol(Protocol):
-    def _update_connecting_indicator(self) -> None:
-        ...
-
     def _set_connecting_state(self, config: ConnectionConfig | None, refresh: bool = True) -> None:
         ...
 

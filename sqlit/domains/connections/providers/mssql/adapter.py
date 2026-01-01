@@ -12,6 +12,11 @@ from sqlit.domains.connections.providers.adapters.base import (
     TableInfo,
     TriggerInfo,
 )
+from sqlit.domains.connections.providers.tls import (
+    TLS_MODE_DEFAULT,
+    TLS_MODE_DISABLE,
+    get_tls_mode,
+)
 
 if TYPE_CHECKING:
     from sqlit.domains.connections.domain.config import AuthType, ConnectionConfig
@@ -129,11 +134,19 @@ class SQLServerAdapter(DatabaseAdapter):
         if endpoint.port and endpoint.port != "1433":
             server_with_port = f"{endpoint.host},{endpoint.port}"
 
-        base = (
-            f"SERVER={server_with_port};"
-            f"DATABASE={endpoint.database or 'master'};"
-            f"TrustServerCertificate=yes;"
-        )
+        base = f"SERVER={server_with_port};" f"DATABASE={endpoint.database or 'master'};"
+
+        tls_mode = get_tls_mode(config)
+        trust_value = str(config.get_option("tls_trust_server_certificate", "yes")).lower()
+        trust_server_cert = "no" if trust_value in {"no", "false", "0"} else "yes"
+
+        security_parts: list[str] = []
+        if tls_mode != TLS_MODE_DEFAULT:
+            encrypt_value = "no" if tls_mode == TLS_MODE_DISABLE else "yes"
+            security_parts.append(f"Encrypt={encrypt_value};")
+        security_parts.append(f"TrustServerCertificate={trust_server_cert};")
+
+        base = base + "".join(security_parts)
 
         auth = self.get_auth_type(config)
 

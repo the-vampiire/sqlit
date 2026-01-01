@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from sqlit.shared.ui.protocols import QueryMixinHost
+from sqlit.domains.explorer.ui.tree import db_switching as tree_db_switching
 from sqlit.shared.ui.spinner import Spinner
 
 from .query_constants import MAX_FETCH_ROWS
@@ -25,6 +26,7 @@ class QueryExecutionMixin:
     _query_worker: Worker[Any] | None = None
     _cancellable_query: CancellableQuery | None = None
     _transaction_executor: TransactionExecutor | None = None
+    _transaction_executor_config: Any | None = None
     _query_spinner: Spinner | None = None
     _query_cursor_cache: dict[str, tuple[int, int]] | None = None
     _query_target_database: str | None = None
@@ -129,8 +131,11 @@ class QueryExecutionMixin:
         from sqlit.domains.query.app.transaction import TransactionExecutor
 
         # Create new executor if none exists or if config changed
-        if self._transaction_executor is None:
+        if self._transaction_executor is None or self._transaction_executor_config != config:
+            if self._transaction_executor is not None:
+                self._transaction_executor.close()
             self._transaction_executor = TransactionExecutor(config=config, provider=provider)
+            self._transaction_executor_config = config
         return self._transaction_executor
 
     def _reset_transaction_executor(self: QueryMixinHost) -> None:
@@ -138,6 +143,7 @@ class QueryExecutionMixin:
         if self._transaction_executor is not None:
             self._transaction_executor.close()
             self._transaction_executor = None
+        self._transaction_executor_config = None
 
     @property
     def in_transaction(self: QueryMixinHost) -> bool:
@@ -189,7 +195,7 @@ class QueryExecutionMixin:
         if db_name is not None:
             self._stop_query_spinner()
             self._display_non_query_result(0, 0)
-            self.set_default_database(db_name)
+            tree_db_switching.set_default_database(self, db_name)
             if keep_insert_mode:
                 self._restore_insert_mode()
             return

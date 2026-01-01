@@ -4,6 +4,7 @@ from sqlit.domains.connections.providers.schema_helpers import (
     ConnectionSchema,
     FieldType,
     SchemaField,
+    TLS_FIELDS,
     _get_aws_region_options,
 )
 
@@ -32,6 +33,7 @@ SCHEMA = ConnectionSchema(
             required=True,
             placeholder="database password",
         ),
-    ),
+    )
+    + TLS_FIELDS,
     supports_ssh=False,
 )

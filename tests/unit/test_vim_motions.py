@@ -2,26 +2,31 @@
 
 from __future__ import annotations
 
-from sqlit.domains.query.editing.motions import (
-    CHAR_MOTIONS,
-    MOTIONS,
+from sqlit.domains.query.editing.motions.basic import (
     motion_down,
-    motion_find_char,
-    motion_find_char_back,
-    motion_last_line,
     motion_left,
+    motion_right,
+    motion_up,
+)
+from sqlit.domains.query.editing.motions.brackets import motion_matching_bracket
+from sqlit.domains.query.editing.motions.lines import (
+    motion_last_line,
     motion_line_end,
     motion_line_start,
-    motion_matching_bracket,
-    motion_right,
+)
+from sqlit.domains.query.editing.motions.registry import CHAR_MOTIONS, MOTIONS
+from sqlit.domains.query.editing.motions.search import (
+    motion_find_char,
+    motion_find_char_back,
     motion_till_char,
     motion_till_char_back,
-    motion_up,
+)
+from sqlit.domains.query.editing.motions.words import (
     motion_WORD,
-    motion_word,
     motion_WORD_back,
-    motion_word_back,
     motion_WORD_end,
+    motion_word,
+    motion_word_back,
     motion_word_end,
 )
 from sqlit.domains.query.editing.types import (

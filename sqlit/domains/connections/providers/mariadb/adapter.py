@@ -14,6 +14,14 @@ from sqlit.domains.connections.providers.adapters.base import (
 )
 from sqlit.domains.connections.providers.mysql.base import MySQLBaseAdapter
 from sqlit.domains.connections.providers.registry import get_default_port
+from sqlit.domains.connections.providers.tls import (
+    TLS_MODE_DEFAULT,
+    TLS_MODE_DISABLE,
+    get_tls_files,
+    get_tls_mode,
+    tls_mode_verifies_cert,
+    tls_mode_verifies_hostname,
+)
 
 if TYPE_CHECKING:
     from sqlit.domains.connections.domain.config import ConnectionConfig
@@ -69,14 +77,30 @@ class MariaDBAdapter(MySQLBaseAdapter):
             raise ValueError("MariaDB connections require a TCP-style endpoint.")
         port = int(endpoint.port or get_default_port("mariadb"))
         mariadb_any: Any = mariadb
-        conn = mariadb_any.connect(
-            host=endpoint.host,
-            port=port,
-            database=endpoint.database or None,
-            user=endpoint.username,
-            password=endpoint.password,
-            connect_timeout=10,
-        )
+        connect_args: dict[str, Any] = {
+            "host": endpoint.host,
+            "port": port,
+            "database": endpoint.database or None,
+            "user": endpoint.username,
+            "password": endpoint.password,
+            "connect_timeout": 10,
+        }
+
+        tls_mode = get_tls_mode(config)
+        tls_ca, tls_cert, tls_key, _ = get_tls_files(config)
+        has_tls_files = any([tls_ca, tls_cert, tls_key])
+        if tls_mode != TLS_MODE_DISABLE and (tls_mode != TLS_MODE_DEFAULT or has_tls_files):
+            if tls_ca:
+                connect_args["ssl_ca"] = tls_ca
+            if tls_cert:
+                connect_args["ssl_cert"] = tls_cert
+            if tls_key:
+                connect_args["ssl_key"] = tls_key
+            if tls_mode != TLS_MODE_DEFAULT:
+                connect_args["ssl_verify_cert"] = tls_mode_verifies_cert(tls_mode)
+                connect_args["ssl_verify_identity"] = tls_mode_verifies_hostname(tls_mode)
+
+        conn = mariadb_any.connect(**connect_args)
         self._supports_sequences = self._detect_sequences_support(conn)
         return conn
 

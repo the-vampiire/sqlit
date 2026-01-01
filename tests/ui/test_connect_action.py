@@ -73,7 +73,7 @@ class TestConnectAction:
 
             # Activate filter with "/" and search for "ora"
             picker.action_open_filter()
-            picker.search_text = "ora"
+            picker._filter_state.text = "ora"
             picker._update_list()
             await pilot.pause()
 
@@ -147,9 +147,9 @@ class TestDockerContainerPicker:
             await pilot.pause()
 
             # Verify Docker containers were detected
-            assert len(picker._docker_containers) == 2
-            assert picker._docker_containers[0].container_name == "test-postgres"
-            assert picker._docker_containers[1].container_name == "test-mysql"
+            assert len(picker._docker_state.containers) == 2
+            assert picker._docker_state.containers[0].container_name == "test-postgres"
+            assert picker._docker_state.containers[1].container_name == "test-mysql"
 
             # Switch to Docker tab (Tab once from Connections)
             await pilot.press("tab")
@@ -197,7 +197,7 @@ class TestDockerContainerPicker:
             assert picker is not None
             picker._on_containers_loaded(DockerStatus.NOT_RUNNING, [])
             await pilot.pause()
-            assert picker._docker_status_message == "(Docker not running)"
+            assert picker._docker_state.status_message == "(Docker not running)"
 
     @pytest.mark.asyncio
     async def test_connection_picker_docker_saved_indicator(self):

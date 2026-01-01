@@ -14,7 +14,7 @@ from .deletion import (
     delete_word_back,
     delete_word_end,
 )
-from .motions import CHAR_MOTIONS, MOTIONS
+from .motions.registry import CHAR_MOTIONS, MOTIONS
 from .operators import OPERATORS, operator_change, operator_delete, operator_yank
 from .text_objects import TEXT_OBJECT_CHARS, get_text_object
 

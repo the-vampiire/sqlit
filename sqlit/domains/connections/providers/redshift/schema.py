@@ -5,6 +5,7 @@ from sqlit.domains.connections.providers.schema_helpers import (
     FieldType,
     SchemaField,
     SelectOption,
+    TLS_FIELDS,
     _get_aws_region_options,
     _get_str_option,
 )
@@ -98,7 +99,8 @@ SCHEMA = ConnectionSchema(
             default="5439",
             group="database_port",
         ),
-    ),
+    )
+    + TLS_FIELDS,
     supports_ssh=False,
     has_advanced_auth=True,
 )

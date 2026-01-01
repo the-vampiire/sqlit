@@ -2,6 +2,7 @@
 
 from sqlit.domains.connections.providers.schema_helpers import (
     SSH_FIELDS,
+    TLS_FIELDS,
     ConnectionSchema,
     _database_field,
     _password_field,
@@ -20,6 +21,7 @@ SCHEMA = ConnectionSchema(
         _username_field(),
         _password_field(),
     )
-    + SSH_FIELDS,
+    + SSH_FIELDS
+    + TLS_FIELDS,
     default_port="5432",
 )

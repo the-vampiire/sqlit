@@ -143,6 +143,37 @@ class TestConnectionScreen:
 
             assert tabs.active == "tab-general"
 
+    @pytest.mark.asyncio
+    async def test_tls_tab_hidden_for_sqlite(self):
+        app = ConnectionScreenTestApp(prefill_values={"db_type": "sqlite"})
+
+        async with app.run_test(size=(100, 35)) as pilot:
+            screen = app.screen
+            await pilot.pause()
+
+            tls_pane = screen.query_one("#tab-tls")
+            assert tls_pane.disabled is True
+
+    @pytest.mark.asyncio
+    async def test_tls_tab_visible_for_postgresql(self):
+        app = ConnectionScreenTestApp(prefill_values={"db_type": "postgresql"})
+
+        async with app.run_test(size=(100, 35)) as pilot:
+            screen = app.screen
+            await pilot.pause()
+
+            tls_pane = screen.query_one("#tab-tls")
+            assert tls_pane.disabled is False
+
+            tabs = screen.query_one("#connection-tabs")
+            tabs.active = "tab-tls"
+            await pilot.pause()
+
+            tls_mode_container = screen.query_one("#container-tls_mode")
+            tls_ca_container = screen.query_one("#container-tls_ca")
+            assert "hidden" not in tls_mode_container.classes
+            assert "hidden" in tls_ca_container.classes
+
 
 class TestTabNavigation:
     """Tests for Tab key navigation through form fields."""

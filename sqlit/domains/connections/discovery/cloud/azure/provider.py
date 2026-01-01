@@ -43,7 +43,8 @@ class AzureProvider:
 
     def get_status(self) -> ProviderStatus:
         """Check if Azure CLI is available and logged in."""
-        from ...cloud_detector import AzureStatus, get_azure_status
+        from .cli import get_azure_status
+        from .models import AzureStatus
 
         status = get_azure_status()
         return {
@@ -55,7 +56,7 @@ class AzureProvider:
 
     def get_account(self) -> AccountInfo | None:
         """Get the currently logged-in Azure account info."""
-        from ...cloud_detector import get_azure_account
+        from .cli import get_azure_account
 
         account = get_azure_account()
         if account is None:
@@ -81,19 +82,16 @@ class AzureProvider:
 
     def logout(self) -> bool:
         """Log out from Azure CLI. Returns True on success."""
-        from ...cloud_detector import azure_logout
+        from .cli import azure_logout
 
         return azure_logout()
 
     def discover(self, state: ProviderState) -> ProviderState:
         """Discover Azure SQL resources."""
-        from ...cloud_detector import (
-            AzureStatus,
-            cache_subscriptions_and_servers,
-            detect_azure_sql_resources,
-            get_azure_subscriptions,
-            get_cached_subscriptions,
-        )
+        from .cache import cache_subscriptions_and_servers, get_cached_subscriptions
+        from .cli import get_azure_subscriptions
+        from .discovery import detect_azure_sql_resources
+        from .models import AzureStatus
 
         # Get account info
         account = self.get_account()

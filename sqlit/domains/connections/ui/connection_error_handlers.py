@@ -48,12 +48,12 @@ class AzureFirewallHandler:
     """Handle Azure SQL firewall errors by offering to add a firewall rule."""
 
     def can_handle(self, error: Exception) -> bool:
-        from sqlit.domains.connections.discovery.cloud_detector import is_firewall_error
+        from sqlit.domains.connections.discovery.cloud.azure.firewall import is_firewall_error
 
         return is_firewall_error(str(error))
 
     def handle(self, app: ConnectionErrorApp, error: Exception, config: ConnectionConfig) -> None:
-        from sqlit.domains.connections.discovery.cloud_detector import (
+        from sqlit.domains.connections.discovery.cloud.azure.firewall import (
             lookup_azure_sql_server,
             parse_ip_from_firewall_error,
             parse_server_name_from_hostname,

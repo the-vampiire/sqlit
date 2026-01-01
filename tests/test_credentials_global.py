@@ -5,6 +5,7 @@ from __future__ import annotations
 from unittest.mock import MagicMock, patch
 
 from sqlit.domains.connections.app.credentials import (
+    KeyringCredentialsService,
     PlaintextCredentialsService,
     PlaintextFileCredentialsService,
     get_credentials_service,
@@ -49,16 +50,16 @@ class TestGlobalCredentialsService:
 
     @patch("sqlit.domains.connections.app.credentials.is_keyring_usable", return_value=False)
     @patch("sqlit.domains.shell.store.settings.SettingsStore.get_instance")
-    def test_fallback_to_in_memory_when_no_consent(
+    def test_fallback_to_keyring_when_no_consent(
         self, mock_store_get: MagicMock, _mock_usable: MagicMock
     ) -> None:
-        """Test fallback to in-memory plaintext when keyring isn't usable and consent not recorded."""
+        """Test fallback to keyring when consent is not recorded."""
         mock_store = MagicMock()
         mock_store.load_all.return_value = {}
         mock_store_get.return_value = mock_store
         reset_credentials_service()
         service = get_credentials_service()
-        assert isinstance(service, PlaintextCredentialsService)
+        assert isinstance(service, KeyringCredentialsService)
 
     @patch("sqlit.domains.connections.app.credentials.is_keyring_usable", return_value=False)
     @patch("sqlit.domains.shell.store.settings.SettingsStore.get_instance")

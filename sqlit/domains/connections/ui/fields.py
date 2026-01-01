@@ -36,7 +36,7 @@ class FieldDefinition:
     row_group: str | None = None
     # Whether the field should be hidden unless advanced mode is enabled
     advanced: bool = False
-    # Tab to place the field in ("general", "advanced", "ssh")
+    # Tab to place the field in ("general", "tls", "ssh")
     tab: str = "general"
 
 

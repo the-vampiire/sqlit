@@ -6,6 +6,8 @@ from typing import TYPE_CHECKING, Any, cast
 
 from sqlit.domains.connections.app.connection_flow import ConnectionFlow, ConnectionPrompter
 from sqlit.domains.connections.app.session import ConnectionSession
+from sqlit.domains.explorer.ui.tree import builder as tree_builder
+from sqlit.domains.explorer.ui.tree import db_switching as tree_db_switching
 from sqlit.shared.ui.protocols import ConnectionMixinHost
 from sqlit.shared.ui.spinner import Spinner
 
@@ -92,7 +94,7 @@ class ConnectionMixin:
         if config is None:
             self._stop_connect_spinner()
             if refresh:
-                self.refresh_tree()
+                tree_builder.refresh_tree(self)
             try:
                 self._update_status_bar()
             except Exception:
@@ -101,8 +103,8 @@ class ConnectionMixin:
 
         self._start_connect_spinner()
         if refresh:
-            self.refresh_tree()
-        self._update_connecting_indicator()
+            tree_builder.refresh_tree(self)
+        tree_builder.update_connecting_indicator(self)
         try:
             self._update_status_bar()
         except Exception:
@@ -125,7 +127,7 @@ class ConnectionMixin:
         """Update UI on connect spinner tick."""
         if not getattr(self, "_connecting_config", None):
             return
-        self._update_connecting_indicator()
+        tree_builder.update_connecting_indicator(self)
         try:
             self._update_status_bar()
         except Exception:
@@ -169,15 +171,14 @@ class ConnectionMixin:
             self._active_database = None
             reconnected = False
 
-            self.refresh_tree()
+            tree_builder.refresh_tree(self)
             self.call_after_refresh(self._select_connected_node)
             if not reconnected:
                 self._load_schema_cache()
             self._update_status_bar()
             self._update_section_labels()
             # Update database labels to show star on active database
-            if hasattr(self, "_update_database_labels"):
-                self.call_after_refresh(self._update_database_labels)
+            self.call_after_refresh(lambda: tree_db_switching.update_database_labels(self))
             if self.current_provider:
                 for message in self.current_provider.post_connect_warnings(config):
                     self.notify(message, severity="warning")
@@ -227,7 +228,10 @@ class ConnectionMixin:
         self._direct_connection_config = None
         self._active_database = None
         self._clear_query_target_database()
-        self.refresh_tree()
+        # Reset transaction executor to avoid stale connection
+        if hasattr(self, "_reset_transaction_executor"):
+            self._reset_transaction_executor()
+        tree_builder.refresh_tree(self)
         self._update_section_labels()
 
     def _select_connected_node(self: ConnectionMixinHost) -> None:
@@ -332,7 +336,7 @@ class ConnectionMixin:
                 if not self.services.connection_store.is_persistent:
                     self.notify("Connections are not persisted in this session")
                 self.services.connection_store.save_all(self.connections)
-                self.refresh_tree()
+                tree_builder.refresh_tree(self)
                 self.notify(f"Connection '{with_config.name}' saved")
 
             endpoint = config.tcp_endpoint
@@ -450,7 +454,7 @@ class ConnectionMixin:
         if not self.services.connection_store.is_persistent:
             self.notify("Connections are not persisted in this session")
         self.services.connection_store.save_all(self.connections)
-        self.refresh_tree()
+        tree_builder.refresh_tree(self)
         self.notify(f"Connection '{config.name}' deleted")
 
     def action_connect_selected(self: ConnectionMixinHost) -> None:

@@ -12,6 +12,13 @@ from sqlit.domains.connections.providers.adapters.base import (
     TableInfo,
     TriggerInfo,
 )
+from sqlit.domains.connections.providers.tls import (
+    TLS_MODE_DEFAULT,
+    TLS_MODE_DISABLE,
+    TLS_MODE_REQUIRE,
+    get_tls_files,
+    get_tls_mode,
+)
 
 if TYPE_CHECKING:
     from sqlit.domains.connections.domain.config import ConnectionConfig
@@ -96,18 +103,39 @@ class ClickHouseAdapter(DatabaseAdapter):
             raise ValueError("ClickHouse connections require a TCP-style endpoint.")
         port = int(endpoint.port) if endpoint.port else 8123
 
+        tls_mode = get_tls_mode(config)
+        tls_ca, tls_cert, tls_key, _ = get_tls_files(config)
+        has_tls_files = any([tls_ca, tls_cert, tls_key])
+
         # Determine if we should use HTTPS based on port
         # 8443 is the standard HTTPS port for ClickHouse
-        secure = port == 8443
+        if tls_mode == TLS_MODE_DISABLE:
+            secure = False
+        elif tls_mode != TLS_MODE_DEFAULT or has_tls_files:
+            secure = True
+        else:
+            secure = port == 8443
 
-        client = clickhouse_connect.get_client(
-            host=endpoint.host,
-            port=port,
-            username=endpoint.username or "default",
-            password=endpoint.password or "",
-            database=endpoint.database or "default",
-            secure=secure,
-        )
+        connect_args: dict[str, Any] = {
+            "host": endpoint.host,
+            "port": port,
+            "username": endpoint.username or "default",
+            "password": endpoint.password or "",
+            "database": endpoint.database or "default",
+            "secure": secure,
+        }
+
+        if tls_mode != TLS_MODE_DISABLE and (tls_mode != TLS_MODE_DEFAULT or has_tls_files):
+            if tls_ca:
+                connect_args["ca_cert"] = tls_ca
+            if tls_cert:
+                connect_args["client_cert"] = tls_cert
+            if tls_key:
+                connect_args["client_cert_key"] = tls_key
+            if tls_mode != TLS_MODE_DEFAULT:
+                connect_args["verify"] = tls_mode != TLS_MODE_REQUIRE
+
+        client = clickhouse_connect.get_client(**connect_args)
         return client
 
     def get_databases(self, conn: Any) -> list[str]:

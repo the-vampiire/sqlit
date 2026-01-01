@@ -6,6 +6,7 @@ from sqlit.domains.connections.providers.schema_helpers import (
     FieldType,
     SchemaField,
     SelectOption,
+    TLS_MODE_FIELD,
     _database_field,
     _port_field,
 )
@@ -61,6 +62,19 @@ SCHEMA = ConnectionSchema(
             placeholder="(empty = ask every connect)",
             group="credentials",
             visible_when=lambda v: v.get("auth_type") in _MSSQL_AUTH_NEEDS_PASSWORD,
+        ),
+        TLS_MODE_FIELD,
+        SchemaField(
+            name="tls_trust_server_certificate",
+            label="Trust Server Certificate",
+            field_type=FieldType.SELECT,
+            options=(
+                SelectOption("yes", "Yes"),
+                SelectOption("no", "No"),
+            ),
+            default="yes",
+            visible_when=lambda v: str(v.get("tls_mode", "default")).lower() not in {"", "default", "disable"},
+            tab="tls",
         ),
     )
     + SSH_FIELDS,

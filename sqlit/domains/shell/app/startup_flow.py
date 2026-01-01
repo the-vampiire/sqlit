@@ -9,6 +9,7 @@ import time
 from pathlib import Path
 
 from sqlit.domains.connections.domain.config import ConnectionConfig
+from sqlit.domains.explorer.ui.tree import builder as tree_builder
 from sqlit.domains.shell.app.idle_scheduler import init_idle_scheduler
 from sqlit.shared.ui.protocols import AppProtocol
 
@@ -43,7 +44,7 @@ def run_on_mount(app: AppProtocol) -> None:
         setup_startup_connection(app, app._startup_connection)
     app._startup_stamp("connections_loaded")
 
-    app.refresh_tree()
+    tree_builder.refresh_tree(app)
     app._startup_stamp("tree_refreshed")
 
     app.object_tree.focus()
