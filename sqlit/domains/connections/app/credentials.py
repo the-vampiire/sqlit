@@ -10,6 +10,7 @@ and an in-memory fallback is provided for testing.
 from __future__ import annotations
 
 import secrets
+import time
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Any
 
@@ -178,14 +179,22 @@ class KeyringCredentialsService(CredentialsService):
         """
         return f"{connection_name}:{key_type}"
 
+    def _get_with_retry(self, key: str, retries: int = 2, delay_seconds: float = 0.2) -> str | None:
+        # A short retry helps with transient keyring/DBus/Keychain hiccups.
+        for attempt in range(retries + 1):
+            try:
+                keyring = self._get_keyring()
+                value = keyring.get_password(KEYRING_SERVICE_NAME, key)
+                return value if isinstance(value, str) else None
+            except Exception:
+                if attempt >= retries:
+                    return None
+                time.sleep(delay_seconds)
+        return None
+
     def get_password(self, connection_name: str) -> str | None:
-        try:
-            keyring = self._get_keyring()
-            key = self._make_key(connection_name, "db")
-            value = keyring.get_password(KEYRING_SERVICE_NAME, key)
-            return value if isinstance(value, str) else None
-        except Exception:
-            return None
+        key = self._make_key(connection_name, "db")
+        return self._get_with_retry(key)
 
     def set_password(self, connection_name: str, password: str) -> None:
         if password is None:
@@ -207,13 +216,8 @@ class KeyringCredentialsService(CredentialsService):
             pass
 
     def get_ssh_password(self, connection_name: str) -> str | None:
-        try:
-            keyring = self._get_keyring()
-            key = self._make_key(connection_name, "ssh")
-            value = keyring.get_password(KEYRING_SERVICE_NAME, key)
-            return value if isinstance(value, str) else None
-        except Exception:
-            return None
+        key = self._make_key(connection_name, "ssh")
+        return self._get_with_retry(key)
 
     def set_ssh_password(self, connection_name: str, password: str) -> None:
         if password is None:
@@ -339,7 +343,11 @@ def build_credentials_service(settings_store: Any | None = None) -> CredentialsS
 
     settings = settings_store.load_all()
     allow_plaintext = bool(settings.get(ALLOW_PLAINTEXT_CREDENTIALS_SETTING))
-    return PlaintextFileCredentialsService() if allow_plaintext else PlaintextCredentialsService()
+    if allow_plaintext:
+        return PlaintextFileCredentialsService()
+    # Keep a best-effort keyring service to avoid dropping stored credentials
+    # when the keyring is temporarily unavailable.
+    return KeyringCredentialsService()
 
 
 def get_credentials_service() -> CredentialsService:
