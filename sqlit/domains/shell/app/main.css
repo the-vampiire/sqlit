@@ -127,7 +127,12 @@
     }
 
     /* Hide single results table when showing stacked multi-statement results */
-    #results-area.stacked-mode #results-table {
+    /* Table IDs are results-table-1, results-table-2, etc. */
+    #results-area.stacked-mode > SqlitDataTable {
+        display: none;
+    }
+
+    #results-area.stacked-mode > Lazy {
         display: none;
     }
 

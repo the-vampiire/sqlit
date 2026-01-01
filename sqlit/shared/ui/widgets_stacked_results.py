@@ -87,6 +87,7 @@ class ResultSection(Collapsible):
 
     ResultSection DataTable {
         /* Height is set dynamically based on row count */
+        margin-right: 1;
     }
     """
 
