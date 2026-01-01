@@ -174,6 +174,10 @@ class UIStatusMixin:
             else:
                 status_parts.append(f"[bold yellow]{query_spinner.frame} Executing[/] [dim]^z to cancel[/]")
 
+        # Check if in a transaction
+        if getattr(self, "in_transaction", False):
+            status_parts.append("[bold magenta]⚡ TRANSACTION[/]")
+
         status_str = "  ".join(status_parts)
         if status_str:
             status_str += "  "

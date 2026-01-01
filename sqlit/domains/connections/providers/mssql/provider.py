@@ -32,7 +32,6 @@ SPEC = ProviderSpec(
             "database": (),
         },
         default_user="sa",
-        default_database="master",
     ),
 )
 

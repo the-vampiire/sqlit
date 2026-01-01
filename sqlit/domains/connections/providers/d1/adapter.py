@@ -33,6 +33,13 @@ class D1Connection:
 class D1Adapter(DatabaseAdapter):
     """Adapter for Cloudflare D1."""
 
+    @classmethod
+    def normalize_docker_connection(cls, config: ConnectionConfig) -> ConnectionConfig:
+        endpoint = config.tcp_endpoint
+        if endpoint and endpoint.username and endpoint.host in {"", "localhost", "127.0.0.1"}:
+            return config.with_endpoint(host=endpoint.username, username="")
+        return config
+
     @property
     def driver_import_names(self) -> tuple[str, ...]:
         return ("requests",)

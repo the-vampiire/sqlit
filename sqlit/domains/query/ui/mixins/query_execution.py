@@ -14,6 +14,7 @@ if TYPE_CHECKING:
 
     from sqlit.domains.query.app.cancellable import CancellableQuery
     from sqlit.domains.query.app.query_service import QueryService
+    from sqlit.domains.query.app.transaction import TransactionExecutor
 
 
 class QueryExecutionMixin:
@@ -23,6 +24,7 @@ class QueryExecutionMixin:
     _query_service_db_type: str | None = None
     _query_worker: Worker[Any] | None = None
     _cancellable_query: CancellableQuery | None = None
+    _transaction_executor: TransactionExecutor | None = None
     _query_spinner: Spinner | None = None
     _query_cursor_cache: dict[str, tuple[int, int]] | None = None
     _query_target_database: str | None = None
@@ -36,6 +38,29 @@ class QueryExecutionMixin:
     def action_execute_query_insert(self: QueryMixinHost) -> None:
         """Execute query in INSERT mode without leaving it."""
         self._execute_query_common(keep_insert_mode=True)
+
+    def action_execute_query_atomic(self: QueryMixinHost) -> None:
+        """Execute query atomically (wrapped in BEGIN/COMMIT with rollback on error)."""
+        if not self.current_connection or not self.current_provider:
+            self.notify("Connect to a server to execute queries", severity="warning")
+            return
+
+        query = self.query_input.text.strip()
+
+        if not query:
+            self.notify("No query to execute", severity="warning")
+            return
+
+        if hasattr(self, "_query_worker") and self._query_worker is not None:
+            self._query_worker.cancel()
+
+        self._start_query_spinner()
+
+        self._query_worker = self.run_worker(
+            self._run_query_atomic_async(query),
+            name="query_execution_atomic",
+            exclusive=True,
+        )
 
     def _execute_query_common(self: QueryMixinHost, keep_insert_mode: bool) -> None:
         """Common query execution logic."""
@@ -99,12 +124,33 @@ class QueryExecutionMixin:
             self._query_service_db_type = provider.metadata.db_type
         return self._query_service
 
+    def _get_transaction_executor(self: QueryMixinHost, config: Any, provider: Any) -> Any:
+        """Get or create a TransactionExecutor for the current connection."""
+        from sqlit.domains.query.app.transaction import TransactionExecutor
+
+        # Create new executor if none exists or if config changed
+        if self._transaction_executor is None:
+            self._transaction_executor = TransactionExecutor(config=config, provider=provider)
+        return self._transaction_executor
+
+    def _reset_transaction_executor(self: QueryMixinHost) -> None:
+        """Reset the transaction executor (e.g., on disconnect)."""
+        if self._transaction_executor is not None:
+            self._transaction_executor.close()
+            self._transaction_executor = None
+
+    @property
+    def in_transaction(self: QueryMixinHost) -> bool:
+        """Whether we're currently in a transaction."""
+        if self._transaction_executor is not None:
+            return self._transaction_executor.in_transaction
+        return False
+
     async def _run_query_async(self: QueryMixinHost, query: str, keep_insert_mode: bool) -> None:
-        """Run query asynchronously using a cancellable dedicated connection."""
+        """Run query asynchronously using TransactionExecutor for transaction support."""
         import asyncio
         import time
 
-        from sqlit.domains.query.app.cancellable import CancellableQuery
         from sqlit.domains.query.app.query_service import QueryResult, parse_use_statement
 
         provider = self.current_provider
@@ -144,22 +190,16 @@ class QueryExecutionMixin:
                 self._restore_insert_mode()
             return
 
-        # Dedicated connection enables cancellation by closing it.
-        cancellable = CancellableQuery(
-            sql=query,
-            config=config,
-            provider=provider,
-            tunnel=self.current_ssh_tunnel,
-        )
-        self._cancellable_query = cancellable
-
+        # Use TransactionExecutor for transaction-aware query execution
+        executor = self._get_transaction_executor(config, provider)
         service = self._get_query_service(provider)
 
         try:
             start_time = time.perf_counter()
             max_rows = self.services.runtime.max_rows or MAX_FETCH_ROWS
             result = await asyncio.to_thread(
-                cancellable.execute,
+                executor.execute,
+                query,
                 max_rows,
             )
             elapsed_ms = (time.perf_counter() - start_time) * 1000
@@ -180,10 +220,64 @@ class QueryExecutionMixin:
             else:
                 self._display_query_error(str(e))
         except Exception as e:
-            if not cancellable.is_cancelled:
-                self._display_query_error(str(e))
+            self._display_query_error(str(e))
         finally:
-            self._cancellable_query = None
+            self._stop_query_spinner()
+
+    async def _run_query_atomic_async(self: QueryMixinHost, query: str) -> None:
+        """Run query atomically (BEGIN/COMMIT with rollback on error)."""
+        import asyncio
+        import time
+
+        from sqlit.domains.query.app.query_service import QueryResult
+        from sqlit.domains.query.app.transaction import TransactionExecutor
+
+        provider = self.current_provider
+        config = self.current_config
+
+        if not provider or not config:
+            self._display_query_error("Not connected")
+            self._stop_query_spinner()
+            return
+
+        # Apply active database if set
+        active_db = None
+        if hasattr(self, "_get_effective_database"):
+            active_db = self._get_effective_database()
+        endpoint = config.tcp_endpoint
+        current_db = endpoint.database if endpoint else ""
+        if active_db and active_db != current_db:
+            config = provider.apply_database_override(config, active_db)
+
+        # Create a dedicated executor for atomic execution
+        executor = TransactionExecutor(config=config, provider=provider)
+        service = self._get_query_service(provider)
+
+        try:
+            start_time = time.perf_counter()
+            max_rows = self.services.runtime.max_rows or MAX_FETCH_ROWS
+            result = await asyncio.to_thread(
+                executor.atomic_execute,
+                query,
+                max_rows,
+            )
+            elapsed_ms = (time.perf_counter() - start_time) * 1000
+
+            service._save_to_history(config.name, query)
+
+            if isinstance(result, QueryResult):
+                self._display_query_results(
+                    result.columns, result.rows, result.row_count, result.truncated, elapsed_ms
+                )
+            else:
+                self._display_non_query_result(result.rows_affected, elapsed_ms)
+
+            self.notify("Query executed atomically (committed)", severity="information")
+
+        except Exception as e:
+            self._display_query_error(f"Transaction rolled back: {e}")
+        finally:
+            executor.close()
             self._stop_query_spinner()
 
     def _restore_insert_mode(self: QueryMixinHost) -> None:
@@ -302,6 +396,9 @@ class QueryExecutionMixin:
                 last_line = len(lines) - 1
                 last_col = len(lines[-1]) if lines else 0
                 self.query_input.cursor_location = (last_line, last_col)
+
+            # Focus query input - this triggers on_descendant_focus which updates footer bindings
+            self.query_input.focus()
         elif action == "delete":
             self._delete_history_entry(data)
             self.action_show_history()

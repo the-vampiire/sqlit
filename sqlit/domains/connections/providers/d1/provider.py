@@ -3,6 +3,7 @@
 from sqlit.domains.connections.providers.adapter_provider import build_adapter_provider
 from sqlit.domains.connections.providers.catalog import register_provider
 from sqlit.domains.connections.providers.d1.schema import SCHEMA
+from sqlit.domains.connections.providers.docker import DockerDetector
 from sqlit.domains.connections.providers.model import DatabaseProvider, ProviderSpec
 
 
@@ -21,6 +22,15 @@ SPEC = ProviderSpec(
     default_port="",
     requires_auth=True,
     badge_label="D1",
+    docker_detector=DockerDetector(
+        image_patterns=("miniflare", "sqlit-miniflare"),
+        env_vars={
+            "user": ("D1_ACCOUNT_ID",),
+            "password": ("D1_API_TOKEN",),
+            "database": ("D1_DATABASE",),
+        },
+        default_database="test-d1",
+    ),
     provider_factory=_provider_factory,
 )
 

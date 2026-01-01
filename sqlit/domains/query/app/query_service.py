@@ -70,15 +70,27 @@ class KeywordQueryAnalyzer:
 
         For multi-statement queries like 'BEGIN; INSERT...; SELECT * FROM t;',
         we check the last statement to determine if results should be returned.
+        Uses the same splitting logic as multi_statement.split_statements.
         """
-        # Split by semicolons and find the last non-empty statement
-        statements = [s.strip() for s in query.split(";") if s.strip()]
+        from .multi_statement import split_statements
+
+        statements = split_statements(query)
         if not statements:
             return QueryKind.NON_QUERY
 
-        last_statement = statements[-1].upper()
-        first_word = last_statement.split()[0] if last_statement else ""
-        return QueryKind.RETURNS_ROWS if first_word in SELECT_KEYWORDS else QueryKind.NON_QUERY
+        # Filter out comment-only statements (lines starting with --)
+        # and find the last actual SQL statement
+        for stmt in reversed(statements):
+            # Skip comment-only lines
+            lines = [line.strip() for line in stmt.split("\n") if line.strip()]
+            non_comment_lines = [line for line in lines if not line.startswith("--")]
+            if non_comment_lines:
+                # Found a statement with actual SQL
+                first_line = non_comment_lines[0].upper()
+                first_word = first_line.split()[0] if first_line else ""
+                return QueryKind.RETURNS_ROWS if first_word in SELECT_KEYWORDS else QueryKind.NON_QUERY
+
+        return QueryKind.NON_QUERY
 
 
 class DialectQueryAnalyzer:

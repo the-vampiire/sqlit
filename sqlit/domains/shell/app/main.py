@@ -199,6 +199,9 @@ class SSMSTUI(
         current_connection_name = self.current_config.name if self.current_config else None
         has_results = bool(self._last_result_columns) and bool(self._last_result_rows)
 
+        # Compute modal_open dynamically from screen stack for accurate state
+        modal_open = any(isinstance(screen, ModalScreen) for screen in self.screen_stack)
+
         return InputContext(
             focus=self._get_focus_pane(),
             vim_mode=self.vim_mode,
@@ -209,7 +212,7 @@ class SSMSTUI(
             results_filter_active=getattr(self, "_results_filter_visible", False),
             value_view_active=self._value_view_active,
             query_executing=self._query_executing,
-            modal_open=self._dialog_open,
+            modal_open=modal_open,
             has_connection=self.current_connection is not None,
             current_connection_name=current_connection_name,
             tree_node_kind=tree_node_kind,

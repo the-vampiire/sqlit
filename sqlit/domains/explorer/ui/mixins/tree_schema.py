@@ -18,7 +18,7 @@ class TreeSchemaMixin:
     _schema_service_session: Any | None = None
 
     def _get_object_cache(self) -> dict[str, dict[str, Any]]:
-        cache = getattr(self, "_db_object_cache", None)
+        cache = self.__dict__.get("_db_object_cache")
         if cache is None:
             cache = {}
             self._db_object_cache = cache

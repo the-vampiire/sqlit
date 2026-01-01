@@ -32,7 +32,6 @@ SPEC = ProviderSpec(
             "database": ("POSTGRES_DB",),
         },
         default_user="postgres",
-        default_database="postgres",
     ),
 )
 

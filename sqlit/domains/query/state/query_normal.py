@@ -26,6 +26,9 @@ class QueryNormalModeState(State):
         self.allows("cursor_right", help="Move cursor right")
         self.allows("cursor_up", help="Move cursor up")
         self.allows("cursor_down", help="Move cursor down")
+        # Vim open line
+        self.allows("open_line_below", help="Open line below")
+        self.allows("open_line_above", help="Open line above")
         # Clipboard actions
         self.allows("select_all", help="Select all text")
         self.allows("copy_selection", help="Copy selection")

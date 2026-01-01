@@ -1,10 +1,12 @@
 """Integration tests for SQL transaction support.
 
 These tests verify that manual transactions (BEGIN/COMMIT/ROLLBACK) work correctly
-when using the same execution path as the TUI (CancellableQuery).
+when using the same execution path as the TUI (TransactionExecutor).
 """
 
 from __future__ import annotations
+
+from typing import Any
 
 import pytest
 
@@ -37,14 +39,10 @@ def make_postgres_config() -> ConnectionConfig:
     )
 
 
-def execute_like_tui(config: ConnectionConfig, sql: str) -> QueryResult | int:
-    """Execute a query using CancellableQuery, exactly like the TUI does.
+def execute_like_tui_old(config: ConnectionConfig, sql: str) -> QueryResult | int:
+    """Execute using OLD TUI behavior (new connection per query).
 
-    Each call creates a new connection, executes the query, and closes the connection.
-    This mirrors the TUI behavior in query_execution.py.
-
-    Returns:
-        QueryResult for SELECT queries, rows_affected (int) for non-SELECT.
+    This was the BROKEN behavior before TransactionExecutor was integrated.
     """
     provider = get_provider(config.db_type)
     cancellable = CancellableQuery(
@@ -58,21 +56,65 @@ def execute_like_tui(config: ConnectionConfig, sql: str) -> QueryResult | int:
     return result.rows_affected
 
 
+# Global executor to simulate TUI keeping state across queries
+_tui_executor: Any = None
+_tui_executor_config_name: str | None = None
+
+
+def execute_like_tui(config: ConnectionConfig, sql: str) -> QueryResult | int:
+    """Execute a query using TransactionExecutor, like the TUI now does.
+
+    Uses a persistent TransactionExecutor to maintain transaction state
+    across query executions, just like the TUI.
+
+    Returns:
+        QueryResult for SELECT queries, rows_affected (int) for non-SELECT.
+    """
+    from sqlit.domains.query.app.transaction import TransactionExecutor
+
+    global _tui_executor, _tui_executor_config_name
+
+    # Reset executor if config changed
+    if _tui_executor is None or _tui_executor_config_name != config.name:
+        if _tui_executor is not None:
+            _tui_executor.close()
+        provider = get_provider(config.db_type)
+        _tui_executor = TransactionExecutor(config=config, provider=provider)
+        _tui_executor_config_name = config.name
+
+    result = _tui_executor.execute(sql, max_rows=1000)
+    if isinstance(result, QueryResult):
+        return result
+    return result.rows_affected
+
+
+def reset_tui_executor() -> None:
+    """Reset the TUI executor (call between tests)."""
+    global _tui_executor, _tui_executor_config_name
+    if _tui_executor is not None:
+        _tui_executor.close()
+        _tui_executor = None
+        _tui_executor_config_name = None
+
+
+@pytest.fixture(autouse=True)
+def cleanup_tui_executor():
+    """Reset TUI executor before and after each test."""
+    reset_tui_executor()
+    yield
+    reset_tui_executor()
+
+
 class TestTransactionRollbackLikeTUI:
     """Tests for transaction ROLLBACK using TUI execution path.
 
-    These tests use CancellableQuery which creates a new connection per query,
-    exactly like the TUI does. This reveals the bug where transactions don't
-    persist across separate query executions.
+    These tests use TransactionExecutor which maintains transaction state
+    across query executions, just like the TUI now does.
     """
 
     @pytest.mark.integration
     def test_rollback_undoes_insert_tui_style(self, postgres_db: str):
-        """ROLLBACK should undo an INSERT when executed like TUI.
-
-        This test currently FAILS because each query runs on a new connection,
-        so the transaction state is lost between BEGIN and ROLLBACK.
-        """
+        """ROLLBACK should undo an INSERT when executed like TUI."""
         config = make_postgres_config()
         adapter = get_adapter("postgresql")
 
@@ -305,3 +347,260 @@ class TestTransactionIsolation:
                 conn2.close()
             except Exception:
                 pass
+
+
+class TestTransactionExecutor:
+    """Tests for TransactionExecutor - the new class that handles transaction-aware execution.
+
+    TransactionExecutor should:
+    - Track transaction state (in_transaction)
+    - Reuse connection when in transaction mode
+    - Create new connections when not in transaction
+    - Support atomic batch execution
+    """
+
+    @pytest.mark.integration
+    def test_rollback_works_with_transaction_executor(self, postgres_db: str):
+        """TransactionExecutor should make ROLLBACK actually work."""
+        from sqlit.domains.query.app.transaction import TransactionExecutor
+
+        config = make_postgres_config()
+        provider = get_provider(config.db_type)
+        adapter = get_adapter("postgresql")
+
+        # Setup
+        conn = adapter.connect(config)
+        try:
+            adapter.execute_non_query(conn, "DROP TABLE IF EXISTS tx_executor_test")
+            adapter.execute_non_query(
+                conn,
+                "CREATE TABLE tx_executor_test (id serial PRIMARY KEY, name varchar(100))"
+            )
+            adapter.execute_non_query(conn, "INSERT INTO tx_executor_test (name) VALUES ('initial')")
+        finally:
+            conn.close()
+
+        # Use TransactionExecutor
+        executor = TransactionExecutor(config, provider)
+        try:
+            # Get initial count
+            result = executor.execute("SELECT COUNT(*) FROM tx_executor_test")
+            assert isinstance(result, QueryResult)
+            initial_count = result.rows[0][0]
+            assert executor.in_transaction is False
+
+            # Begin transaction
+            executor.execute("BEGIN")
+            assert executor.in_transaction is True
+
+            # Insert (should be in transaction)
+            executor.execute("INSERT INTO tx_executor_test (name) VALUES ('should_rollback')")
+            assert executor.in_transaction is True
+
+            # Rollback
+            executor.execute("ROLLBACK")
+            assert executor.in_transaction is False
+
+            # Check final count - should be unchanged
+            result = executor.execute("SELECT COUNT(*) FROM tx_executor_test")
+            assert isinstance(result, QueryResult)
+            final_count = result.rows[0][0]
+
+            assert final_count == initial_count, (
+                f"ROLLBACK should have undone the INSERT. "
+                f"Initial: {initial_count}, Final: {final_count}"
+            )
+        finally:
+            executor.close()
+            # Cleanup
+            conn = adapter.connect(config)
+            try:
+                adapter.execute_non_query(conn, "DROP TABLE IF EXISTS tx_executor_test")
+            finally:
+                conn.close()
+
+    @pytest.mark.integration
+    def test_commit_works_with_transaction_executor(self, postgres_db: str):
+        """TransactionExecutor should make COMMIT persist changes.
+
+        This test verifies isolation: uncommitted data should NOT be visible
+        from another connection, but after COMMIT it should be visible.
+        """
+        from sqlit.domains.query.app.transaction import TransactionExecutor
+
+        config = make_postgres_config()
+        provider = get_provider(config.db_type)
+        adapter = get_adapter("postgresql")
+
+        # Setup
+        conn = adapter.connect(config)
+        try:
+            adapter.execute_non_query(conn, "DROP TABLE IF EXISTS tx_executor_test")
+            adapter.execute_non_query(
+                conn,
+                "CREATE TABLE tx_executor_test (id serial PRIMARY KEY, name varchar(100))"
+            )
+        finally:
+            conn.close()
+
+        # Use TransactionExecutor
+        executor = TransactionExecutor(config, provider)
+        # Create a separate connection to check isolation
+        observer_conn = adapter.connect(config)
+        try:
+            executor.execute("BEGIN")
+            executor.execute("INSERT INTO tx_executor_test (name) VALUES ('uncommitted_row')")
+
+            # BEFORE COMMIT: observer connection should NOT see the row
+            cols, rows, _ = adapter.execute_query(
+                observer_conn,
+                "SELECT COUNT(*) FROM tx_executor_test WHERE name = 'uncommitted_row'"
+            )
+            count_before_commit = rows[0][0]
+            assert count_before_commit == 0, (
+                "Uncommitted row should NOT be visible from another connection"
+            )
+
+            executor.execute("COMMIT")
+
+            # AFTER COMMIT: observer connection SHOULD see the row
+            cols, rows, _ = adapter.execute_query(
+                observer_conn,
+                "SELECT COUNT(*) FROM tx_executor_test WHERE name = 'uncommitted_row'"
+            )
+            count_after_commit = rows[0][0]
+            assert count_after_commit == 1, (
+                "Committed row SHOULD be visible from another connection"
+            )
+        finally:
+            executor.close()
+            observer_conn.close()
+            conn = adapter.connect(config)
+            try:
+                adapter.execute_non_query(conn, "DROP TABLE IF EXISTS tx_executor_test")
+            finally:
+                conn.close()
+
+    @pytest.mark.integration
+    def test_atomic_execute_rolls_back_on_error(self, postgres_db: str):
+        """atomic_execute should rollback all changes if any statement fails."""
+        from sqlit.domains.query.app.transaction import TransactionExecutor
+
+        config = make_postgres_config()
+        provider = get_provider(config.db_type)
+        adapter = get_adapter("postgresql")
+
+        # Setup
+        conn = adapter.connect(config)
+        try:
+            adapter.execute_non_query(conn, "DROP TABLE IF EXISTS atomic_test")
+            adapter.execute_non_query(
+                conn,
+                "CREATE TABLE atomic_test (id serial PRIMARY KEY, name varchar(100) NOT NULL)"
+            )
+            adapter.execute_non_query(conn, "INSERT INTO atomic_test (name) VALUES ('initial')")
+        finally:
+            conn.close()
+
+        executor = TransactionExecutor(config, provider)
+        try:
+            result = executor.execute("SELECT COUNT(*) FROM atomic_test")
+            assert isinstance(result, QueryResult)
+            initial_count = result.rows[0][0]
+
+            # This should fail on the second INSERT (NULL not allowed)
+            # and rollback the first INSERT too
+            query = """
+            INSERT INTO atomic_test (name) VALUES ('row1');
+            INSERT INTO atomic_test (name) VALUES (NULL);
+            """
+            with pytest.raises(Exception):
+                executor.atomic_execute(query)
+
+            # Count should be unchanged (both inserts rolled back)
+            result = executor.execute("SELECT COUNT(*) FROM atomic_test")
+            assert isinstance(result, QueryResult)
+            final_count = result.rows[0][0]
+
+            assert final_count == initial_count, (
+                f"atomic_execute should have rolled back all changes. "
+                f"Initial: {initial_count}, Final: {final_count}"
+            )
+        finally:
+            executor.close()
+            conn = adapter.connect(config)
+            try:
+                adapter.execute_non_query(conn, "DROP TABLE IF EXISTS atomic_test")
+            finally:
+                conn.close()
+
+    @pytest.mark.integration
+    def test_atomic_execute_commits_on_success(self, postgres_db: str):
+        """atomic_execute should commit all changes if all statements succeed."""
+        from sqlit.domains.query.app.transaction import TransactionExecutor
+
+        config = make_postgres_config()
+        provider = get_provider(config.db_type)
+        adapter = get_adapter("postgresql")
+
+        # Setup
+        conn = adapter.connect(config)
+        try:
+            adapter.execute_non_query(conn, "DROP TABLE IF EXISTS atomic_test")
+            adapter.execute_non_query(
+                conn,
+                "CREATE TABLE atomic_test (id serial PRIMARY KEY, name varchar(100))"
+            )
+        finally:
+            conn.close()
+
+        executor = TransactionExecutor(config, provider)
+        try:
+            query = """
+            INSERT INTO atomic_test (name) VALUES ('row1');
+            INSERT INTO atomic_test (name) VALUES ('row2');
+            SELECT * FROM atomic_test;
+            """
+            result = executor.atomic_execute(query)
+
+            # Should return the SELECT result
+            assert isinstance(result, QueryResult)
+            assert result.row_count == 2
+        finally:
+            executor.close()
+            conn = adapter.connect(config)
+            try:
+                adapter.execute_non_query(conn, "DROP TABLE IF EXISTS atomic_test")
+            finally:
+                conn.close()
+
+    @pytest.mark.integration
+    def test_connection_reused_during_transaction(self, postgres_db: str):
+        """Connection should be reused during a transaction."""
+        from sqlit.domains.query.app.transaction import TransactionExecutor
+
+        config = make_postgres_config()
+        provider = get_provider(config.db_type)
+
+        executor = TransactionExecutor(config, provider)
+        try:
+            # Before transaction - no persistent connection
+            assert executor._transaction_connection is None
+
+            executor.execute("BEGIN")
+
+            # During transaction - connection should exist
+            assert executor._transaction_connection is not None
+            conn_id = id(executor._transaction_connection)
+
+            executor.execute("SELECT 1")
+
+            # Same connection should be reused
+            assert id(executor._transaction_connection) == conn_id
+
+            executor.execute("COMMIT")
+
+            # After transaction - connection should be closed
+            assert executor._transaction_connection is None
+        finally:
+            executor.close()

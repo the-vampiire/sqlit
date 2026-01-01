@@ -262,7 +262,16 @@ class ResultsMixin:
         self._flash_table_yank(self.results_table, "all")
 
     def action_results_yank_leader_key(self: ResultsMixinHost) -> None:
-        """Open the results yank (copy) leader menu."""
+        """Open the results yank (copy) leader menu.
+
+        If the result is an error message, copy it directly instead of showing the menu.
+        """
+        # If results show an error, copy it directly without showing the menu
+        if self._last_result_columns == ["Error"] and self._last_result_rows:
+            error_message = str(self._last_result_rows[0][0]) if self._last_result_rows[0] else ""
+            self._copy_text(error_message)
+            self._flash_table_yank(self.results_table, "cell")
+            return
         self._start_leader_pending("ry")
 
     def action_ry_cell(self: ResultsMixinHost) -> None:

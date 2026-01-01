@@ -195,7 +195,7 @@ class AutocompleteSchemaMixin:
                 # Need to fetch database list - offload to thread
                 def work() -> None:
                     try:
-                        all_dbs = inspector.get_databases(connection)
+                        all_dbs = self._run_db_call(inspector.get_databases, connection)
                         system_dbs = {s.lower() for s in caps.system_databases}
                         databases = [d for d in all_dbs if d.lower() not in system_dbs]
                         self.call_from_thread(self._on_databases_loaded, databases)
@@ -243,7 +243,7 @@ class AutocompleteSchemaMixin:
                     # Need to fetch database list - offload to thread
                     def work() -> None:
                         try:
-                            all_dbs = inspector.get_databases(connection)
+                            all_dbs = self._run_db_call(inspector.get_databases, connection)
                             system_dbs = {s.lower() for s in caps.system_databases}
                             databases = [d for d in all_dbs if d.lower() not in system_dbs]
                             self.call_from_thread(self._on_databases_loaded, databases)
@@ -317,7 +317,7 @@ class AutocompleteSchemaMixin:
                 db_arg = database
                 if hasattr(self, "_get_metadata_db_arg"):
                     db_arg = self._get_metadata_db_arg(database)
-                tables = inspector.get_tables(connection, db_arg)
+                tables = self._run_db_call(inspector.get_tables, connection, db_arg)
                 # Store in shared cache and process on main thread
                 self.call_from_thread(self._on_tables_loaded, tables, database, cache_key)
             except Exception as e:
@@ -401,7 +401,7 @@ class AutocompleteSchemaMixin:
                 db_arg = database
                 if hasattr(self, "_get_metadata_db_arg"):
                     db_arg = self._get_metadata_db_arg(database)
-                views = inspector.get_views(connection, db_arg)
+                views = self._run_db_call(inspector.get_views, connection, db_arg)
                 self.call_from_thread(self._on_views_loaded, views, database, cache_key)
             except Exception as e:
                 self.call_from_thread(self._on_views_error, e, database)
@@ -485,7 +485,7 @@ class AutocompleteSchemaMixin:
                 db_arg = database
                 if hasattr(self, "_get_metadata_db_arg"):
                     db_arg = self._get_metadata_db_arg(database)
-                procedures = procedure_inspector.get_procedures(connection, db_arg)
+                procedures = self._run_db_call(procedure_inspector.get_procedures, connection, db_arg)
                 self.call_from_thread(self._on_procedures_loaded, procedures, database, cache_key)
             except Exception as e:
                 self.call_from_thread(self._on_procedures_error, e, database)

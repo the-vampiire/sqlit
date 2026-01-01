@@ -936,6 +936,34 @@ class QueryEditingMixin:
         new_col = min(col, len(lines[new_row]) if new_row < len(lines) else 0)
         self.query_input.cursor_location = (new_row, new_col)
 
+    def action_open_line_below(self: QueryMixinHost) -> None:
+        """Open new line below current line and enter insert mode (o in normal mode)."""
+        self._push_undo_state()
+        lines = self.query_input.text.split("\n")
+        row, _ = self.query_input.cursor_location
+
+        # Insert new line after current row
+        lines.insert(row + 1, "")
+        self.query_input.text = "\n".join(lines)
+        self.query_input.cursor_location = (row + 1, 0)
+
+        # Enter insert mode
+        self.action_enter_insert_mode()
+
+    def action_open_line_above(self: QueryMixinHost) -> None:
+        """Open new line above current line and enter insert mode (O in normal mode)."""
+        self._push_undo_state()
+        lines = self.query_input.text.split("\n")
+        row, _ = self.query_input.cursor_location
+
+        # Insert new line before current row
+        lines.insert(row, "")
+        self.query_input.text = "\n".join(lines)
+        self.query_input.cursor_location = (row, 0)
+
+        # Enter insert mode
+        self.action_enter_insert_mode()
+
     def _clear_leader_pending(self: QueryMixinHost) -> None:
         """Clear any leader pending state if supported by the host."""
         cancel = getattr(self, "_cancel_leader_pending", None)

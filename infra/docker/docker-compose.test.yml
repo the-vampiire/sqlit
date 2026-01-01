@@ -57,7 +57,6 @@ services:
     environment:
       CLICKHOUSE_USER: "default"
       CLICKHOUSE_PASSWORD: "TestPassword123!"
-      CLICKHOUSE_DB: "test_sqlit"
     ports:
       - "8123:8123"
     tmpfs:
@@ -194,6 +193,10 @@ services:
       context: ../../tests/fixtures/d1
     container_name: sqlit-test-miniflare
     command: ["wrangler", "dev", "--local", "--ip", "0.0.0.0", "--port", "8787"]
+    environment:
+      D1_ACCOUNT_ID: "test-account"
+      D1_API_TOKEN: "test-token"
+      D1_DATABASE: "test-d1"
     ports:
       - "8787:8787"
     volumes:

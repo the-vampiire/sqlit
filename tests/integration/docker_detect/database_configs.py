@@ -167,7 +167,7 @@ DATABASE_CONFIGS = [
         env_vars={},
         internal_port=8123,  # HTTP interface port
         expected_user="default",
-        expected_password=None,
+        expected_password="",
         expected_database=None,  # No default_database anymore
         startup_time=5,
     ),
@@ -179,7 +179,7 @@ DATABASE_CONFIGS = [
         env_vars={},
         internal_port=26257,
         expected_user="root",
-        expected_password=None,
+        expected_password="",
         expected_database=None,  # No default_database anymore
         startup_time=10,
     ),
@@ -207,7 +207,7 @@ DATABASE_CONFIGS = [
         env_vars={},
         internal_port=8080,
         expected_user="",
-        expected_password=None,
+        expected_password="",
         expected_database="",
         startup_time=5,
     ),

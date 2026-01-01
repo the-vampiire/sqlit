@@ -42,6 +42,7 @@ SPEC = ProviderSpec(
             "database": ("MYSQL_DATABASE",),
         },
         default_user="root",
+        default_database="",
         default_user_requires_password=True,
         preferred_host="127.0.0.1",
         post_process=_mysql_post_process,
