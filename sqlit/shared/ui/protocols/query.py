@@ -27,6 +27,8 @@ class QueryStateProtocol(Protocol):
     _query_spinner: Spinner | None
     _query_cursor_cache: dict[str, tuple[int, int]] | None
     _undo_history: Any | None
+    _transaction_executor: Any | None
+    _transaction_executor_config: Any | None
 
 
 class QueryActionsProtocol(Protocol):

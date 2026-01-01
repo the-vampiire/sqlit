@@ -8,6 +8,7 @@ from sqlit.shared.ui.protocols.autocomplete import AutocompleteProtocol
 from sqlit.shared.ui.protocols.connections import ConnectionsProtocol
 from sqlit.shared.ui.protocols.core import TextualAppProtocol
 from sqlit.shared.ui.protocols.explorer import ExplorerProtocol
+from sqlit.shared.ui.protocols.lifecycle import LifecycleProtocol
 from sqlit.shared.ui.protocols.metadata import MetadataHelpersProtocol
 from sqlit.shared.ui.protocols.query import QueryProtocol
 from sqlit.shared.ui.protocols.results import ResultsProtocol
@@ -26,6 +27,7 @@ class ConnectionMixinHost(
     ResultsProtocol,
     UINavigationProtocol,
     QueryProtocol,
+    LifecycleProtocol,
     Protocol,
 ):
     """Host protocol for connection-related mixins."""
@@ -44,6 +46,7 @@ class QueryMixinHost(
     QueryProtocol,
     UINavigationProtocol,
     VimModeProtocol,
+    LifecycleProtocol,
     Protocol,
 ):
     """Host protocol for query mixins."""
@@ -76,6 +79,7 @@ class TreeMixinHost(
     ResultsProtocol,
     QueryProtocol,
     UINavigationProtocol,
+    LifecycleProtocol,
     Protocol,
 ):
     """Host protocol for explorer tree mixins."""

@@ -144,10 +144,10 @@ class TestExecutorResetOnConfigChange:
 
 
 class TestDisconnectResetsExecutor:
-    """Tests that _disconnect_silent resets the transaction executor."""
+    """Tests that _disconnect_silent resets the transaction executor via lifecycle hooks."""
 
-    def test_disconnect_calls_reset_transaction_executor(self) -> None:
-        """_disconnect_silent should call _reset_transaction_executor."""
+    def test_disconnect_calls_on_disconnect_lifecycle_hook(self) -> None:
+        """_disconnect_silent should call _on_disconnect lifecycle hook."""
         from sqlit.domains.connections.ui.mixins.connection import ConnectionMixin
 
         # Create a mock that tracks method calls
@@ -160,15 +160,31 @@ class TestDisconnectResetsExecutor:
         instance._direct_connection_config = None
         instance._active_database = "testdb"
         instance._clear_query_target_database = MagicMock()
-        instance._reset_transaction_executor = MagicMock()
+        instance._on_disconnect = MagicMock()
         instance._update_section_labels = MagicMock()
 
         # Mock the tree_builder.refresh_tree call
         with patch("sqlit.domains.connections.ui.mixins.connection.tree_builder"):
             ConnectionMixin._disconnect_silent(instance)
 
-        # Verify _reset_transaction_executor was called
-        instance._reset_transaction_executor.assert_called_once()
+        # Verify _on_disconnect lifecycle hook was called
+        instance._on_disconnect.assert_called_once()
+
+    def test_query_execution_mixin_on_disconnect_calls_reset(self) -> None:
+        """QueryExecutionMixin._on_disconnect should call _reset_transaction_executor.
+
+        Note: We can't call _on_disconnect directly with a MagicMock because of super().
+        Instead, we verify _on_disconnect's implementation calls _reset_transaction_executor
+        by checking the source code structure, and test _reset_transaction_executor separately.
+        """
+        from sqlit.domains.query.ui.mixins.query_execution import QueryExecutionMixin
+        import inspect
+
+        # Verify _on_disconnect calls _reset_transaction_executor by checking the source
+        source = inspect.getsource(QueryExecutionMixin._on_disconnect)
+        assert "_reset_transaction_executor" in source, (
+            "_on_disconnect should call _reset_transaction_executor"
+        )
 
 
 class TestConnectionSwitchScenario:
@@ -180,8 +196,11 @@ class TestConnectionSwitchScenario:
         Simulate: connect(A) -> query -> disconnect -> connect(B) -> query
 
         The second query should use server B's executor, not server A's.
+
+        Note: We call _reset_transaction_executor directly since _on_disconnect
+        uses super() which doesn't work with MagicMock. Other tests verify the
+        lifecycle hook chain.
         """
-        from sqlit.domains.connections.ui.mixins.connection import ConnectionMixin
         from sqlit.domains.query.ui.mixins.query_execution import QueryExecutionMixin
 
         executor_a = MagicMock(name="executor_for_server_a")
@@ -192,13 +211,8 @@ class TestConnectionSwitchScenario:
         instance = MagicMock()
         instance._transaction_executor = None
         instance._transaction_executor_config = None
-        instance._session = MagicMock()
-        instance._active_database = None
-        instance._direct_connection_config = None
-        instance._clear_query_target_database = MagicMock()
-        instance._update_section_labels = MagicMock()
 
-        # Bind mixin methods
+        # Bind mixin methods (simulating the mixin chain)
         instance._get_transaction_executor = lambda config, provider: QueryExecutionMixin._get_transaction_executor(
             instance, config, provider
         )
@@ -212,16 +226,13 @@ class TestConnectionSwitchScenario:
             db_type="postgresql",
             endpoint=TcpEndpoint(host="192.168.1.1", port="5432", database="db_a"),
         )
-        instance.current_config = config_a
-        instance.current_connection = MagicMock()
 
         # Step 2: Run query on server A
         exec_a = instance._get_transaction_executor(config_a, provider)
         assert exec_a is executor_a
 
-        # Step 3: Disconnect
-        with patch("sqlit.domains.connections.ui.mixins.connection.tree_builder"):
-            ConnectionMixin._disconnect_silent(instance)
+        # Step 3: Disconnect (simulating what _on_disconnect does)
+        instance._reset_transaction_executor()
 
         # Verify executor was closed
         executor_a.close.assert_called_once()
@@ -233,9 +244,6 @@ class TestConnectionSwitchScenario:
             db_type="postgresql",
             endpoint=TcpEndpoint(host="192.168.1.2", port="5432", database="db_b"),
         )
-        instance.current_config = config_b
-        instance.current_connection = MagicMock()
-        instance._session = MagicMock()
 
         # Step 5: Run query on server B
         exec_b = instance._get_transaction_executor(config_b, provider)

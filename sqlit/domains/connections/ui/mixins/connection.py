@@ -228,9 +228,8 @@ class ConnectionMixin:
         self._direct_connection_config = None
         self._active_database = None
         self._clear_query_target_database()
-        # Reset transaction executor to avoid stale connection
-        if hasattr(self, "_reset_transaction_executor"):
-            self._reset_transaction_executor()
+        # Notify all mixins of disconnect via lifecycle hook
+        self._on_disconnect()
         tree_builder.refresh_tree(self)
         self._update_section_labels()
 

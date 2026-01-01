@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Any
 
 from sqlit.shared.ui.protocols import QueryMixinHost
 from sqlit.domains.explorer.ui.tree import db_switching as tree_db_switching
+from sqlit.shared.ui.lifecycle import LifecycleHooksMixin
 from sqlit.shared.ui.spinner import Spinner
 
 from .query_constants import MAX_FETCH_ROWS
@@ -18,7 +19,7 @@ if TYPE_CHECKING:
     from sqlit.domains.query.app.transaction import TransactionExecutor
 
 
-class QueryExecutionMixin:
+class QueryExecutionMixin(LifecycleHooksMixin):
     """Mixin providing query execution actions."""
 
     _query_service: QueryService | None = None
@@ -144,6 +145,11 @@ class QueryExecutionMixin:
             self._transaction_executor.close()
             self._transaction_executor = None
         self._transaction_executor_config = None
+
+    def _on_disconnect(self: QueryMixinHost) -> None:
+        """Handle disconnect lifecycle event."""
+        super()._on_disconnect()
+        self._reset_transaction_executor()
 
     @property
     def in_transaction(self: QueryMixinHost) -> bool:

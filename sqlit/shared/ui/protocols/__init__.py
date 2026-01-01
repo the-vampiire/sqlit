@@ -8,6 +8,7 @@ from sqlit.shared.ui.protocols.autocomplete import AutocompleteProtocol
 from sqlit.shared.ui.protocols.connections import ConnectionsProtocol
 from sqlit.shared.ui.protocols.core import TextualAppProtocol
 from sqlit.shared.ui.protocols.explorer import ExplorerProtocol
+from sqlit.shared.ui.protocols.lifecycle import LifecycleProtocol
 from sqlit.shared.ui.protocols.metadata import MetadataHelpersProtocol
 from sqlit.shared.ui.protocols.mixins import (
     AutocompleteMixinHost,
@@ -40,6 +41,7 @@ class AppProtocol(
     ResultsProtocol,
     UINavigationProtocol,
     StartupProtocol,
+    LifecycleProtocol,
     Protocol,
 ):
     """Composite protocol for the SQLit Textual App."""
@@ -54,6 +56,7 @@ __all__ = [
     "ConnectionsProtocol",
     "ConnectionMixinHost",
     "ExplorerProtocol",
+    "LifecycleProtocol",
     "MetadataHelpersProtocol",
     "QueryMixinHost",
     "QueryProtocol",
