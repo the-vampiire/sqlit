@@ -31,7 +31,7 @@ class ResultsMixin:
 
         # Fallback to system clipboard via pyperclip (requires platform support).
         try:
-            import pyperclip  # noqa: F401  # type: ignore
+            import pyperclip  # type: ignore
 
             pyperclip.copy(text)
             return True

@@ -9,6 +9,7 @@ from rich.markup import escape as escape_markup
 from sqlit.domains.connections.providers.metadata import get_connection_display_info
 from sqlit.domains.explorer.domain.tree_nodes import ConnectionNode, DatabaseNode, FolderNode
 from sqlit.shared.ui.protocols import TreeMixinHost
+
 from . import expansion_state
 
 

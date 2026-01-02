@@ -99,7 +99,50 @@ target-version = "py310"
 line-length = 240
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "UP"]  # pycodestyle, pyflakes, isort, pyupgrade
+select = [
+    "E",      # pycodestyle errors
+    "F",      # pyflakes
+    "I",      # isort
+    "UP",     # pyupgrade
+    "B",      # flake8-bugbear (common gotchas)
+    "S",      # flake8-bandit (security)
+    "C90",    # mccabe complexity
+    "SIM",    # flake8-simplify
+    "RUF",    # ruff-specific rules
+]
+
+ignore = [
+    "S101",    # assert used (fine for internal checks)
+    "S603",    # subprocess without shell=True (intentional - CLI tool)
+    "S607",    # partial executable path (CLI tool needs to call system commands)
+    "S608",    # SQL injection (this is a SQL tool - queries are intentional)
+    "S301",    # pickle (if used, likely intentional)
+    "S110",    # try-except-pass (intentional for TUI resilience - prevents UI crashes)
+    "SIM105",  # contextlib.suppress (same as S110 - try-except-pass is clearer here)
+    "SIM108",  # ternary operator (if-else is often more readable)
+    "S105",    # hardcoded password (false positives on enum values and parameter names)
+    "S106",    # hardcoded password func arg (false positives - these are type indicators)
+    "S107",    # hardcoded password default (false positive - password_type parameter)
+    "RUF012",  # mutable class default (Textual BINDINGS pattern - framework convention)
+    "SIM102",  # collapsible if (explicit nesting often clearer)
+    "RUF005",  # collection concatenation (+ is clearer than unpacking for small lists)
+    "B905",    # zip strict (not needed for same-length internal data)
+    "S606",    # start process no shell (os.execv is intentional for restart)
+    "S602",    # subprocess shell=True (intentional for Windows terminal launch)
+    "S103",    # chmod permissive (755 needed for executable scripts)
+    "SIM118",  # dict.keys() iteration (works fine, minor style preference)
+    "SIM103",  # needless bool return (explicit is clearer)
+    "SIM101",  # duplicate isinstance (split checks can be clearer)
+    "SIM115",  # open context manager (not needed for immediate .read())
+    "RUF022",  # unsorted __all__ (organized by category is better than alphabetical)
+]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 25  # complex domain logic in cloud providers and TUI screens
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S101", "S106", "S108"]
+"sqlit/domains/query/completion/completion.py" = ["C901"]  # SQL autocomplete is inherently complex
 
 [project.scripts]
 sqlit = "sqlit.cli:main"

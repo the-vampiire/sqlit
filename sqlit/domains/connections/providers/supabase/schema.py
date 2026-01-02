@@ -1,10 +1,10 @@
 """Connection schema for Supabase."""
 
 from sqlit.domains.connections.providers.schema_helpers import (
+    TLS_FIELDS,
     ConnectionSchema,
     FieldType,
     SchemaField,
-    TLS_FIELDS,
     _get_aws_region_options,
 )
 

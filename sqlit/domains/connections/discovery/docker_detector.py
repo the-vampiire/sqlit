@@ -365,7 +365,6 @@ def container_to_connection_config(container: DetectedContainer) -> ConnectionCo
     """
     from sqlit.domains.connections.domain.config import ConnectionConfig, TcpEndpoint
     from sqlit.domains.connections.providers.catalog import get_provider
-    from sqlit.domains.connections.providers.config_service import normalize_connection_config
 
     server = container.host
     port = str(container.port) if container.port else ""

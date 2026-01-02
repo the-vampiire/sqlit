@@ -26,9 +26,9 @@ from sqlit.shared.ui.widgets import Dialog, FilterInput
 
 from .cloud_nodes import CloudNodeData
 from .cloud_providers import get_cloud_ui_adapter
+from .constants import TAB_CLOUD, TAB_CONNECTIONS, TAB_DOCKER
 from .controllers.cloud import CloudController
 from .controllers.docker import DockerController
-from .constants import TAB_CLOUD, TAB_CONNECTIONS, TAB_DOCKER
 from .state import CloudState, DockerState, FilterState
 from .tabs import (
     DOCKER_PREFIX,
@@ -470,8 +470,8 @@ class ConnectionPickerScreen(ModalScreen):
 
     def action_refresh(self) -> None:
         from sqlit.domains.connections.discovery.cloud.aws.cache import clear_aws_cache
-        from sqlit.domains.connections.discovery.cloud.gcp.cache import clear_gcp_cache
         from sqlit.domains.connections.discovery.cloud.azure.cache import clear_azure_cache
+        from sqlit.domains.connections.discovery.cloud.gcp.cache import clear_gcp_cache
 
         clear_azure_cache()
         clear_aws_cache()

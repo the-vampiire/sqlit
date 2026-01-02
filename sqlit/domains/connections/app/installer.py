@@ -176,7 +176,7 @@ class Installer:
                     )
                 )
         except StylesheetParseError as e:
-            # Fallback: avoid crashing the app if the stylesheet can’t be reparsed after install.
+            # Fallback: avoid crashing the app if the stylesheet can't be reparsed after install.
             try:
                 details = str(e.args[0])
             except Exception:

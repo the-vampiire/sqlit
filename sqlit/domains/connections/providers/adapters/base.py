@@ -480,10 +480,10 @@ class CursorBasedAdapter(DatabaseAdapter):
 
 __all__ = [
     "ColumnInfo",
+    "DatabaseAdapter",
     "IndexInfo",
-    "TriggerInfo",
     "SequenceInfo",
     "TableInfo",
+    "TriggerInfo",
     "resolve_file_path",
-    "DatabaseAdapter",
 ]

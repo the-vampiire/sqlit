@@ -75,7 +75,7 @@ def iter_provider_schemas() -> Iterable[ConnectionSchema]:
 
 def get_all_schemas() -> dict[str, ConnectionSchema]:
     _ensure_discovered()
-    return {k: get_provider_schema(k) for k in _PROVIDERS.keys()}
+    return {k: get_provider_schema(k) for k in _PROVIDERS}
 
 
 @cache

@@ -57,7 +57,7 @@ class FixedResultSyncProcess:
     stdout: str = ""
     stderr: str = ""
 
-    def communicate(self, input: str | None = None, timeout: float | None = None) -> tuple[str, str]:  # noqa: ARG002
+    def communicate(self, input: str | None = None, timeout: float | None = None) -> tuple[str, str]:
         return self.stdout, self.stderr
 
     def terminate(self) -> None:
@@ -66,7 +66,7 @@ class FixedResultSyncProcess:
     def kill(self) -> None:
         return None
 
-    def wait(self, timeout: float | None = None) -> int:  # noqa: ARG002
+    def wait(self, timeout: float | None = None) -> int:
         return self.returncode
 
 
@@ -78,7 +78,7 @@ class FixedResultSyncRunner(SyncProcessRunner):
     stdout: str = ""
     stderr: str = ""
 
-    def spawn(self, command: list[str], *, cwd: str | None = None) -> SyncProcess:  # noqa: ARG002
+    def spawn(self, command: list[str], *, cwd: str | None = None) -> SyncProcess:
         return FixedResultSyncProcess(returncode=self.returncode, stdout=self.stdout, stderr=self.stderr)
 
 
@@ -138,7 +138,7 @@ class FixedResultAsyncRunner(AsyncProcessRunner):
     returncode: int
     lines: list[str] = field(default_factory=list)
 
-    async def spawn(self, command: str) -> AsyncProcess:  # noqa: ARG002
+    async def spawn(self, command: str) -> AsyncProcess:
         reader = asyncio.StreamReader()
         for line in self.lines:
             reader.feed_data((line + "\n").encode("utf-8"))

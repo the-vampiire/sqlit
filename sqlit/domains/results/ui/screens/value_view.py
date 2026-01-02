@@ -73,9 +73,8 @@ class ValueViewScreen(ModalScreen):
 
     def compose(self) -> ComposeResult:
         shortcuts = [("Copy", "y"), ("Close", "<enter>")]
-        with Dialog(id="value-dialog", title=self.title, shortcuts=shortcuts):
-            with VerticalScroll(id="value-scroll"):
-                yield Static(self.value, id="value-text")
+        with Dialog(id="value-dialog", title=self.title, shortcuts=shortcuts), VerticalScroll(id="value-scroll"):
+            yield Static(self.value, id="value-text")
 
     def on_mount(self) -> None:
         self.query_one("#value-scroll").focus()

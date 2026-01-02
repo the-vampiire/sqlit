@@ -18,6 +18,7 @@ from sqlit.domains.explorer.domain.tree_nodes import (
     ViewNode,
 )
 from sqlit.shared.ui.protocols import TreeMixinHost
+
 from . import db_switching, expansion_state, schema_render
 
 

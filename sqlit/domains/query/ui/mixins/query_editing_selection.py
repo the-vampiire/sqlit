@@ -8,6 +8,7 @@ from sqlit.shared.ui.protocols import QueryMixinHost
 
 if TYPE_CHECKING:
     from textual.widgets.text_area import Selection
+
     from sqlit.domains.query.editing.types import Range
 
 
@@ -16,7 +17,7 @@ class QueryEditingSelectionMixin:
 
     def _ordered_selection(
         self: QueryMixinHost,
-        selection: "Selection",
+        selection: Selection,
     ) -> tuple[tuple[int, int], tuple[int, int]]:
         """Return ordered (start, end) selection coordinates."""
         start = selection.start
@@ -29,7 +30,7 @@ class QueryEditingSelectionMixin:
         self: QueryMixinHost,
         start: tuple[int, int],
         end: tuple[int, int],
-    ) -> "Range":
+    ) -> Range:
         """Build a charwise range from selection bounds."""
         from sqlit.domains.query.editing.types import MotionType, Position, Range
 

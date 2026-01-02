@@ -89,8 +89,7 @@ class ConnectionSession:
         """
         from sqlit.domains.connections.app.tunnel import create_ssh_tunnel
         from sqlit.domains.connections.providers.adapter_provider import build_adapter_provider
-        from sqlit.domains.connections.providers.catalog import get_provider
-        from sqlit.domains.connections.providers.catalog import get_provider_schema, get_provider_spec
+        from sqlit.domains.connections.providers.catalog import get_provider, get_provider_schema, get_provider_spec
         from sqlit.domains.connections.providers.config_service import normalize_connection_config
         from sqlit.domains.connections.providers.model import DatabaseProvider
 

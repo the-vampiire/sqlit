@@ -27,10 +27,10 @@ class DefaultDriverResolver:
     def import_module(self, module_name: str) -> Any:
         return importlib.import_module(module_name)
 
-    def should_skip(self, provider: Any) -> bool:  # noqa: ARG002
+    def should_skip(self, provider: Any) -> bool:
         return False
 
-    def is_missing(self, provider: Any) -> bool:  # noqa: ARG002
+    def is_missing(self, provider: Any) -> bool:
         return False
 
 
@@ -48,7 +48,7 @@ class ConfigurableDriverResolver:
             raise ImportError(f"No module named '{module_name}'")
         return importlib.import_module(module_name)
 
-    def should_skip(self, provider: Any) -> bool:  # noqa: ARG002
+    def should_skip(self, provider: Any) -> bool:
         return self.skip_checks
 
     def is_missing(self, provider: Any) -> bool:
@@ -65,7 +65,7 @@ def attach_driver_resolver(provider: Any, resolver: DriverResolver) -> None:
     if callable(setter):
         setter(resolver)
     else:
-        setattr(adapter, "_driver_resolver", resolver)
+        adapter._driver_resolver = resolver
 
 
 def import_driver_module(

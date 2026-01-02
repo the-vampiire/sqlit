@@ -1,6 +1,7 @@
 """Editing helpers for query text."""
 
 from .clipboard import PasteResult, get_selection_text, paste_text, select_all_range
+from .comments import toggle_comment_lines
 from .deletion import (
     EditResult,
     delete_all,
@@ -21,7 +22,6 @@ from .text_objects import TEXT_OBJECT_CHARS, get_text_object
 # Vim motion engine
 from .types import MotionResult, MotionType, OperatorResult, Position, Range
 from .undo_history import UndoHistory, UndoState
-from .comments import toggle_comment_lines
 
 __all__ = [
     # Deletion

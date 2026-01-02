@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from sqlit.shared.ui.protocols import QueryMixinHost
 from sqlit.domains.explorer.ui.tree import db_switching as tree_db_switching
 from sqlit.shared.ui.lifecycle import LifecycleHooksMixin
+from sqlit.shared.ui.protocols import QueryMixinHost
 from sqlit.shared.ui.spinner import Spinner
 
 from .query_constants import MAX_FETCH_ROWS

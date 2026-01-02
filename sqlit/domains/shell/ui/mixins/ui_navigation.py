@@ -66,8 +66,8 @@ class UINavigationMixin(UIStatusMixin, UILeaderMixin):
             self._set_fullscreen_mode("none")
         if self.results_area.has_class("stacked-mode"):
             try:
-                from sqlit.shared.ui.widgets_stacked_results import ResultSection, StackedResultsContainer
                 from sqlit.shared.ui.widgets import SqlitDataTable
+                from sqlit.shared.ui.widgets_stacked_results import ResultSection, StackedResultsContainer
 
                 container = self.query_one("#stacked-results", StackedResultsContainer)
                 sections = list(container.query(ResultSection))

@@ -140,7 +140,6 @@ class QueryResultsMixin:
         """Display stacked results for multi-statement query."""
         from sqlit.shared.ui.widgets_stacked_results import (
             AUTO_COLLAPSE_THRESHOLD,
-            StackedResultsContainer,
         )
 
         # Get or create stacked results container

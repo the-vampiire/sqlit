@@ -20,12 +20,12 @@ from .search import (
 )
 from .words import (
     motion_WORD,
-    motion_WORD_back,
-    motion_WORD_end,
-    motion_WORD_end_back,
     motion_word,
+    motion_WORD_back,
     motion_word_back,
+    motion_WORD_end,
     motion_word_end,
+    motion_WORD_end_back,
     motion_word_end_back,
 )
 

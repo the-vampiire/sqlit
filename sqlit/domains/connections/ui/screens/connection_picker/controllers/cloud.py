@@ -13,9 +13,10 @@ from sqlit.domains.connections.ui.screens.connection_picker.cloud_nodes import C
 from sqlit.domains.connections.ui.screens.connection_picker.constants import TAB_CLOUD
 
 if TYPE_CHECKING:
+    from textual.widgets.tree import TreeNode
+
     from sqlit.domains.connections.domain.config import ConnectionConfig
     from sqlit.domains.connections.ui.screens.connection_picker.screen import ConnectionPickerScreen
-    from textual.widgets.tree import TreeNode
 
 
 class CloudController:

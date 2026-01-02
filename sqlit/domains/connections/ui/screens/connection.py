@@ -31,14 +31,14 @@ from sqlit.domains.connections.providers.catalog import get_provider_schema
 from sqlit.domains.connections.providers.driver import ensure_provider_driver_available
 from sqlit.domains.connections.providers.exceptions import MissingDriverError
 from sqlit.domains.connections.providers.metadata import has_advanced_auth, is_file_based, supports_ssh
+from sqlit.domains.connections.ui.connection_focus import ConnectionFocusController
 from sqlit.domains.connections.ui.connection_form import ConnectionFormController
 from sqlit.domains.connections.ui.connection_test_controller import ConnectionTestController
-from sqlit.domains.connections.ui.connection_focus import ConnectionFocusController
 from sqlit.domains.connections.ui.driver_status_controller import DriverStatusController
-from sqlit.domains.connections.ui.validation_ui_binder import ConnectionValidationBinder
 from sqlit.domains.connections.ui.restart_cache import clear_restart_cache, write_restart_cache
-from sqlit.domains.connections.ui.validation import ValidationState, validate_connection_form
 from sqlit.domains.connections.ui.screens.connection_styles import CONNECTION_SCREEN_CSS
+from sqlit.domains.connections.ui.validation import ValidationState, validate_connection_form
+from sqlit.domains.connections.ui.validation_ui_binder import ConnectionValidationBinder
 from sqlit.shared.ui.protocols import AppProtocol
 from sqlit.shared.ui.widgets import Dialog
 
@@ -335,17 +335,15 @@ class ConnectionScreen(ModalScreen):
                         for group in field_groups:
                             yield self._form.create_field_group(group, initial_values=initial_values)
 
-                with TabPane("TLS", id="tab-tls"):
-                    with Container(id="dynamic-fields-tls"):
-                        tls_groups = self._form.get_field_groups_for_type(db_type, tab="tls")
-                        for group in tls_groups:
-                            yield self._form.create_field_group(group, initial_values=initial_values)
+                with TabPane("TLS", id="tab-tls"), Container(id="dynamic-fields-tls"):
+                    tls_groups = self._form.get_field_groups_for_type(db_type, tab="tls")
+                    for group in tls_groups:
+                        yield self._form.create_field_group(group, initial_values=initial_values)
 
-                with TabPane("SSH", id="tab-ssh"):
-                    with Container(id="dynamic-fields-ssh"):
-                        ssh_groups = self._form.get_field_groups_for_type(db_type, tab="ssh")
-                        for group in ssh_groups:
-                            yield self._form.create_field_group(group, initial_values=initial_values)
+                with TabPane("SSH", id="tab-ssh"), Container(id="dynamic-fields-ssh"):
+                    ssh_groups = self._form.get_field_groups_for_type(db_type, tab="ssh")
+                    for group in ssh_groups:
+                        yield self._form.create_field_group(group, initial_values=initial_values)
 
             yield Static("", id="test-status")
 

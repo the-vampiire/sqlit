@@ -447,8 +447,8 @@ def _build_temp_connection(args: argparse.Namespace) -> ConnectionConfig | None:
 
     try:
         DatabaseType(db_type)
-    except ValueError:
-        raise ValueError(f"Invalid database type '{db_type}'")
+    except ValueError as err:
+        raise ValueError(f"Invalid database type '{db_type}'") from err
 
     schema = get_provider_schema(db_type)
     return build_connection_config_from_args(

@@ -186,7 +186,7 @@ class SSMSTUI(
             if node is not None:
                 kind = ""
                 if hasattr(self, "_get_node_kind"):
-                    kind = getattr(self, "_get_node_kind")(node)
+                    kind = self._get_node_kind(node)
                 tree_node_kind = kind or None
                 if tree_node_kind == "connection":
                     data = getattr(node, "data", None)

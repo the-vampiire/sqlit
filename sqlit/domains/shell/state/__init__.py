@@ -11,7 +11,7 @@ __all__ = [
     "LeaderPendingState",
     "MainScreenState",
     "ModalActiveState",
-    "UIStateMachine",
     "QueryExecutingState",
     "RootState",
+    "UIStateMachine",
 ]

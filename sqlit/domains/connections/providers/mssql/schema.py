@@ -2,11 +2,11 @@
 
 from sqlit.domains.connections.providers.schema_helpers import (
     SSH_FIELDS,
+    TLS_MODE_FIELD,
     ConnectionSchema,
     FieldType,
     SchemaField,
     SelectOption,
-    TLS_MODE_FIELD,
     _database_field,
     _port_field,
 )

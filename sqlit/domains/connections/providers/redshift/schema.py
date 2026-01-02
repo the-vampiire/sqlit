@@ -1,11 +1,11 @@
 """Connection schema for Amazon Redshift."""
 
 from sqlit.domains.connections.providers.schema_helpers import (
+    TLS_FIELDS,
     ConnectionSchema,
     FieldType,
     SchemaField,
     SelectOption,
-    TLS_FIELDS,
     _get_aws_region_options,
     _get_str_option,
 )

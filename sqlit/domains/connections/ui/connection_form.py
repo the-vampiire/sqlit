@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from textual.containers import Container
 from textual.widget import Widget
@@ -192,9 +193,7 @@ class ConnectionFormController:
             value = values.get(field_name)
             if value is None:
                 continue
-            if isinstance(widget, Input):
-                widget.value = str(value)
-            elif isinstance(widget, Select):
+            if isinstance(widget, Input) or isinstance(widget, Select):
                 widget.value = str(value)
             elif isinstance(widget, OptionList):
                 try:

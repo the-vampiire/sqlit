@@ -14,8 +14,8 @@ from .docker import (
 )
 
 __all__ = [
-    "CloudNodeData",
     "DOCKER_PREFIX",
+    "CloudNodeData",
     "build_cloud_tree",
     "build_connections_options",
     "build_docker_options",
