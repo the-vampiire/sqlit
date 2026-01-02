@@ -84,7 +84,7 @@ def _clear_passwords_if_not_persisted(config: ConnectionConfig) -> None:
 
 def _save_connections(services: AppServices, connections: list[ConnectionConfig]) -> None:
     try:
-        _save_connections(services, connections)
+        services.connection_store.save_all(connections)
     except CredentialsPersistError as exc:
         print(f"Warning: {exc}", file=sys.stderr)
 
