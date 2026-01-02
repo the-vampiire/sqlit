@@ -46,6 +46,10 @@ To run the complete test suite including SQL Server, PostgreSQL, MySQL, MariaDB,
    ```bash
    docker compose -f infra/docker/docker-compose.test.yml up -d
    ```
+   To include the enterprise test containers (Db2, Trino, Presto, Oracle 11g):
+   ```bash
+   docker compose -f infra/docker/docker-compose.test.yml --profile enterprise up -d
+   ```
 
 2. Wait for the databases to be ready (about 30-45 seconds), then run tests:
    ```bash
@@ -127,6 +131,49 @@ The database tests can be configured with these environment variables:
 |----------|---------|-------------|
 | `AWS_PROFILE` | `default` | AWS CLI profile to use (must be configured in `~/.aws/credentials`) |
 | `AWS_REGION` | `us-east-1` | AWS Region |
+
+**IBM Db2:**
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `DB2_HOST` | `localhost` | Db2 hostname |
+| `DB2_PORT` | `50000` | Db2 port |
+| `DB2_USER` | `db2inst1` | Db2 username |
+| `DB2_PASSWORD` | `TestPassword123!` | Db2 password |
+| `DB2_DATABASE` | `testdb` | Db2 database name |
+
+**Trino:**
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `TRINO_HOST` | `localhost` | Trino hostname |
+| `TRINO_PORT` | `8082` | Trino port |
+| `TRINO_USER` | `testuser` | Trino username |
+| `TRINO_PASSWORD` | `` | Trino password |
+| `TRINO_CATALOG` | `memory` | Trino catalog |
+| `TRINO_SCHEMA` | `default` | Trino schema |
+| `TRINO_HTTP_SCHEME` | `http` | Trino HTTP scheme |
+
+**Presto:**
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PRESTO_HOST` | `localhost` | Presto hostname |
+| `PRESTO_PORT` | `8083` | Presto port |
+| `PRESTO_USER` | `testuser` | Presto username |
+| `PRESTO_PASSWORD` | `` | Presto password |
+| `PRESTO_CATALOG` | `memory` | Presto catalog |
+| `PRESTO_SCHEMA` | `default` | Presto schema |
+| `PRESTO_HTTP_SCHEME` | `http` | Presto HTTP scheme |
+
+**Oracle 11g (Legacy):**
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `ORACLE11G_RUN_TESTS` | `` | Enable Oracle 11g tests when set to `1` |
+| `ORACLE11G_HOST` | `localhost` | Oracle 11g hostname |
+| `ORACLE11G_PORT` | `1522` | Oracle 11g port |
+| `ORACLE11G_USER` | `system` | Oracle 11g username |
+| `ORACLE11G_PASSWORD` | `oracle` | Oracle 11g password |
+| `ORACLE11G_SERVICE` | `XE` | Oracle 11g service name |
+| `ORACLE11G_CLIENT_MODE` | `thick` | Oracle client mode |
+| `ORACLE11G_CLIENT_LIB_DIR` | `` | Oracle Instant Client library directory |
 
 ### CockroachDB Quickstart (Docker)
 

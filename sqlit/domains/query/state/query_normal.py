@@ -16,7 +16,7 @@ class QueryNormalModeState(State):
         self.allows("enter_insert_mode", label="Insert Mode", help="Enter INSERT mode")
         self.allows("execute_query", label="Execute", help="Execute query")
         self.allows("delete_leader_key", label="Delete", help="Delete (menu)")
-        self.allows("yank_leader_key", label="Yank", help="Yank/copy (menu)")
+        self.allows("yank_leader_key", label="Copy", help="Copy (menu)")
         self.allows("change_leader_key", label="Change", help="Change (menu)")
         self.allows("g_leader_key", label="Go", help="Go motions (menu)")
         self.allows("new_query", label="New", help="New query (clear all)")
@@ -72,7 +72,7 @@ class QueryNormalModeState(State):
         left.append(
             DisplayBinding(
                 key=resolve_display_key("yank_leader_key") or "y",
-                label="Yank",
+                label="Copy",
                 action="yank_leader_key",
             )
         )

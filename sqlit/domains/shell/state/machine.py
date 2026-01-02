@@ -123,68 +123,173 @@ class UIStateMachine:
         return state.__class__.__name__
 
     def generate_help_text(self) -> str:
-        """Generate help text from all states' help entries."""
-        entries_by_category: dict[str, list[HelpEntry]] = {}
-
-        for state in self._states:
-            for entry in state.get_help_entries():
-                if entry.category not in entries_by_category:
-                    entries_by_category[entry.category] = []
-                existing_keys = {e.key for e in entries_by_category[entry.category]}
-                if entry.key not in existing_keys:
-                    entries_by_category[entry.category].append(entry)
-
+        """Generate structured help text with organized sections."""
         from sqlit.core.keymap import format_key
 
         leader_key = resolve_display_key("leader_key") or "<space>"
-        delete_key = resolve_display_key("delete_leader_key") or "d"
 
-        commands_category = f"Commands ({leader_key})"
-        entries_by_category[commands_category] = [
-            HelpEntry(f"{leader_key}+{format_key(cmd.key)}", cmd.label, commands_category)
-            for cmd in get_leader_commands()
-        ]
+        def section(title: str) -> str:
+            return f"[bold cyan]{title}[/]"
 
-        delete_category = f"Delete ({delete_key})"
-        entries_by_category[delete_category] = [
-            HelpEntry(f"{delete_key}+{format_key(cmd.key)}", cmd.label, delete_category)
-            for cmd in get_leader_commands("delete")
-        ]
+        def subsection(title: str) -> str:
+            return f"  [dim]{title}[/]"
 
-        # Add Connection picker section (modal dialog, not state-based)
-        entries_by_category["Connection Picker"] = [
-            HelpEntry("/", "Search connections", "Connection Picker"),
-            HelpEntry("n", "New connection", "Connection Picker"),
-            HelpEntry("e", "Edit connection", "Connection Picker"),
-            HelpEntry("d", "Delete connection", "Connection Picker"),
-            HelpEntry("s", "Save to config", "Connection Picker"),
-            HelpEntry("<enter>", "Connect", "Connection Picker"),
-            HelpEntry("<esc>", "Close", "Connection Picker"),
-        ]
-        entries_by_category["Filtering"] = [
-            HelpEntry("~", "Prefix filter for fuzzy match", "Filtering"),
-        ]
+        def binding(key: str, desc: str, indent: int = 4) -> str:
+            pad = " " * indent
+            return f"{pad}[bold yellow]{key:<12}[/] {desc}"
 
-        category_order = [
-            "Explorer",
-            "Query Editor (Normal)",
-            "Query Editor (Insert)",
-            "Results",
-            "Filtering",
-            "Connection Picker",
-            commands_category,
-            delete_category,
-            "General",
-            "Navigation",
-            "Query",
-        ]
+        lines: list[str] = []
 
-        output = []
-        for category in category_order:
-            if category not in entries_by_category:
-                continue
-            output.append(f"\n{category}:")
-            for entry in sorted(entries_by_category[category], key=lambda e: e.key):
-                output.append(f"  {entry.key:<10} {entry.description}")
+        # ═══════════════════════════════════════════════════════════════════
+        # NAVIGATION
+        # ═══════════════════════════════════════════════════════════════════
+        lines.append(section("NAVIGATION"))
+        lines.append(binding("e", "Focus Explorer pane"))
+        lines.append(binding("q", "Focus Query pane"))
+        lines.append(binding("r", "Focus Results pane"))
+        lines.append(binding(leader_key, "Open command menu"))
+        lines.append(binding("?", "Show this help"))
+        lines.append("")
 
-        return "\n".join(output)
+        # ═══════════════════════════════════════════════════════════════════
+        # EXPLORER
+        # ═══════════════════════════════════════════════════════════════════
+        lines.append(section("EXPLORER"))
+        lines.append(binding("j/k", "Move cursor down/up"))
+        lines.append(binding("<enter>", "Expand node / Connect"))
+        lines.append(binding("s", "SELECT TOP 100 (on table/view)"))
+        lines.append(binding("/", "Filter tree (fuzzy search)"))
+        lines.append(binding("z", "Collapse all nodes"))
+        lines.append(binding("f", "Refresh tree"))
+        lines.append("")
+        lines.append(subsection("On Connection Node:"))
+        lines.append(binding("n", "New connection"))
+        lines.append(binding("e", "Edit connection"))
+        lines.append(binding("d", "Delete connection"))
+        lines.append(binding("D", "Duplicate connection"))
+        lines.append(binding("x", "Disconnect"))
+        lines.append("")
+
+        # ═══════════════════════════════════════════════════════════════════
+        # QUERY EDITOR
+        # ═══════════════════════════════════════════════════════════════════
+        lines.append(section("QUERY EDITOR"))
+        lines.append(subsection("Normal Mode:"))
+        lines.append(binding("i", "Enter INSERT mode"))
+        lines.append(binding("o/O", "Open line below/above"))
+        lines.append(binding("<enter>/gr", "Execute query"))
+        lines.append(binding("gt", "Execute as transaction"))
+        lines.append(binding("<backspace>", "Query history"))
+        lines.append(binding("N", "New query (clear)"))
+        lines.append(binding("u", "Undo"))
+        lines.append(binding("^r", "Redo"))
+        lines.append("")
+        lines.append(subsection("Insert Mode:"))
+        lines.append(binding("<esc>", "Exit to NORMAL mode"))
+        lines.append(binding("^<enter>", "Execute (stay in INSERT)"))
+        lines.append(binding("<tab>", "Accept autocomplete"))
+        lines.append(binding("^a", "Select all"))
+        lines.append(binding("^c", "Copy selection"))
+        lines.append(binding("^v", "Paste"))
+        lines.append("")
+        lines.append(subsection("Vim Operators (Normal Mode):"))
+        lines.append(binding("y{motion}", "Copy"))
+        lines.append(binding("d{motion}", "Delete"))
+        lines.append(binding("c{motion}", "Change (delete + INSERT)"))
+        lines.append(binding("p", "Paste after cursor"))
+        lines.append("")
+        lines.append(subsection("Vim Motions:"))
+        lines.append(binding("h/j/k/l", "Cursor left/down/up/right"))
+        lines.append(binding("w/W", "Word forward"))
+        lines.append(binding("b/B", "Word backward"))
+        lines.append(binding("e/E", "End of word"))
+        lines.append(binding("0/$", "Line start/end"))
+        lines.append(binding("gg/G", "File start/end"))
+        lines.append(binding("f{c}/F{c}", "Find char forward/back"))
+        lines.append(binding("t{c}/T{c}", "Till char forward/back"))
+        lines.append(binding("%", "Matching bracket"))
+        lines.append("")
+        lines.append(subsection("Text Objects (with i=inner, a=around):"))
+        lines.append(binding("iw/aw", "Word"))
+        lines.append(binding('i"/a"', "Double quotes"))
+        lines.append(binding("i'/a'", "Single quotes"))
+        lines.append(binding("i)/a)", "Parentheses"))
+        lines.append(binding("i}/a}", "Braces"))
+        lines.append(binding("i]/a]", "Brackets"))
+        lines.append("")
+
+        # ═══════════════════════════════════════════════════════════════════
+        # RESULTS
+        # ═══════════════════════════════════════════════════════════════════
+        lines.append(section("RESULTS"))
+        lines.append(binding("h/j/k/l", "Navigate cells"))
+        lines.append(binding("v", "Preview cell (inline)"))
+        lines.append(binding("V", "View full cell value"))
+        lines.append(binding("u", "Generate UPDATE statement"))
+        lines.append(binding("/", "Filter rows"))
+        lines.append(binding("x", "Clear results"))
+        lines.append(binding("<tab>", "Next result set"))
+        lines.append(binding("<s-tab>", "Previous result set"))
+        lines.append(binding("z", "Collapse/expand result"))
+        lines.append("")
+        lines.append(subsection("Copy Menu (y):"))
+        lines.append(binding("yc", "Copy cell"))
+        lines.append(binding("yy", "Copy row"))
+        lines.append(binding("ya", "Copy all"))
+        lines.append(binding("ye", "Export menu..."))
+        lines.append("")
+
+        # ═══════════════════════════════════════════════════════════════════
+        # FILTERING
+        # ═══════════════════════════════════════════════════════════════════
+        lines.append(section("FILTERING"))
+        lines.append(binding("/", "Open filter (Explorer/Results)"))
+        lines.append(binding("<enter>", "Apply filter"))
+        lines.append(binding("<esc>", "Close filter"))
+        lines.append(binding("~prefix", "Fuzzy match mode"))
+        lines.append(binding("n/N", "Next/prev match (Results)"))
+        lines.append("")
+
+        # ═══════════════════════════════════════════════════════════════════
+        # COMMAND MENU
+        # ═══════════════════════════════════════════════════════════════════
+        lines.append(section(f"COMMAND MENU ({leader_key})"))
+        leader_cmds = get_leader_commands("leader")
+        by_cat: dict[str, list[tuple[str, str]]] = {}
+        for cmd in leader_cmds:
+            if cmd.category not in by_cat:
+                by_cat[cmd.category] = []
+            by_cat[cmd.category].append((cmd.key, cmd.label))
+
+        for cat in ["View", "Connection", "Actions"]:
+            if cat in by_cat:
+                lines.append(subsection(f"{cat}:"))
+                for key, label in by_cat[cat]:
+                    lines.append(binding(f"{leader_key}{key}", label))
+        lines.append("")
+
+        # ═══════════════════════════════════════════════════════════════════
+        # CONNECTION PICKER
+        # ═══════════════════════════════════════════════════════════════════
+        lines.append(section("CONNECTION PICKER"))
+        lines.append(binding("/", "Search connections"))
+        lines.append(binding("j/k", "Navigate list"))
+        lines.append(binding("<enter>", "Connect to selected"))
+        lines.append(binding("n", "New connection"))
+        lines.append(binding("e", "Edit connection"))
+        lines.append(binding("d", "Delete connection"))
+        lines.append(binding("D", "Duplicate connection"))
+        lines.append(binding("<esc>", "Close picker"))
+        lines.append("")
+
+        # ═══════════════════════════════════════════════════════════════════
+        # GLOBAL
+        # ═══════════════════════════════════════════════════════════════════
+        lines.append(section("GLOBAL"))
+        lines.append(binding("^q", "Quit"))
+        lines.append(binding(f"{leader_key}q", "Quit (from menu)"))
+        lines.append(binding(f"{leader_key}t", "Change theme"))
+        lines.append(binding(f"{leader_key}f", "Toggle fullscreen pane"))
+        lines.append(binding(f"{leader_key}e", "Toggle explorer visibility"))
+
+        return "\n".join(lines)

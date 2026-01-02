@@ -15,16 +15,22 @@ class DatabaseType(str, Enum):
     COCKROACHDB = "cockroachdb"
     D1 = "d1"
     DUCKDB = "duckdb"
+    DB2 = "db2"
     FIREBIRD = "firebird"
+    HANA = "hana"
     MARIADB = "mariadb"
     MSSQL = "mssql"
     MYSQL = "mysql"
     ORACLE = "oracle"
+    ORACLE_LEGACY = "oracle_legacy"
     POSTGRESQL = "postgresql"
+    PRESTO = "presto"
     REDSHIFT = "redshift"
     SNOWFLAKE = "snowflake"
     SQLITE = "sqlite"
     SUPABASE = "supabase"
+    TERADATA = "teradata"
+    TRINO = "trino"
     TURSO = "turso"
 
 
@@ -36,8 +42,14 @@ DATABASE_TYPE_DISPLAY_ORDER: list[DatabaseType] = [
     DatabaseType.MSSQL,
     DatabaseType.MARIADB,
     DatabaseType.ORACLE,
+    DatabaseType.ORACLE_LEGACY,
+    DatabaseType.DB2,
+    DatabaseType.HANA,
+    DatabaseType.TERADATA,
     DatabaseType.SNOWFLAKE,
     DatabaseType.BIGQUERY,
+    DatabaseType.TRINO,
+    DatabaseType.PRESTO,
     DatabaseType.DUCKDB,
     DatabaseType.REDSHIFT,
     DatabaseType.CLICKHOUSE,

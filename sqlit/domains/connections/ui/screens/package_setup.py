@@ -22,7 +22,7 @@ class PackageSetupScreen(ModalScreen):
 
     BINDINGS = [
         Binding("enter", "install", "Install", priority=True),
-        Binding("y", "yank", "Yank"),
+        Binding("y", "yank", "Copy"),
         Binding("escape", "cancel", "Cancel", priority=True),
     ]
 
@@ -96,7 +96,7 @@ class PackageSetupScreen(ModalScreen):
             f"[bold]Install the driver using your preferred package manager:[/]"
         )
 
-        shortcuts = [("Install", "<enter>"), ("Yank", "y"), ("Cancel", "<esc>")]
+        shortcuts = [("Install", "<enter>"), ("Copy", "y"), ("Cancel", "<esc>")]
 
         strategy = self._get_install_strategy()
         self._install_options = strategy.get_install_options(

@@ -42,6 +42,11 @@ all = [
     "PyMySQL>=1.1.0",
     "mariadb>=1.1.0",
     "oracledb>=2.0.0",
+    "ibm_db>=3.2.0",
+    "hdbcli>=2.20.0",
+    "teradatasql>=20.0.0",
+    "trino>=0.329.0",
+    "presto-python-client>=0.8.4",
     "duckdb>=1.1.0",  # min avoids known CVEs
     "clickhouse-connect>=0.7.0",
     "requests>=2.32.4",  # min avoids known CVEs
@@ -58,6 +63,11 @@ mssql = ["mssql-python>=1.1.0"]
 mysql = ["PyMySQL>=1.1.0"]
 mariadb = ["mariadb>=1.1.0"]
 oracle = ["oracledb>=2.0.0"]
+db2 = ["ibm_db>=3.2.0"]
+hana = ["hdbcli>=2.20.0"]
+teradata = ["teradatasql>=20.0.0"]
+trino = ["trino>=0.329.0"]
+presto = ["presto-python-client>=0.8.4"]
 duckdb = ["duckdb>=1.1.0"]  # min avoids known CVEs
 clickhouse = ["clickhouse-connect>=0.7.0"]
 d1 = ["requests>=2.32.4"]  # min avoids known CVEs
@@ -208,6 +218,17 @@ module = [
     "sshtunnel",
     "docker",
     "docker.errors",
+    "ibm_db",
+    "ibm_db_dbi",
+    "hdbcli",
+    "hdbcli.dbapi",
+    "teradatasql",
+    "trino",
+    "trino.dbapi",
+    "trino.auth",
+    "prestodb",
+    "prestodb.dbapi",
+    "prestodb.auth",
     "pyarrow",
     "textual_fastdatatable"
 ]

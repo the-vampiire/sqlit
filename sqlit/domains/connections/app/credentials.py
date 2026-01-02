@@ -273,6 +273,11 @@ class KeyringCredentialsService(CredentialsService):
             key = self._make_key(connection_name, "db")
             keyring.delete_password(KEYRING_SERVICE_NAME, key)
         except Exception as exc:
+            # Ignore "password not found" errors - deleting non-existent password is a no-op
+            exc_type = type(exc).__name__
+            exc_msg = str(exc).lower()
+            if exc_type == "PasswordDeleteError" or "no such password" in exc_msg:
+                return
             self._raise_keyring_error(connection_name=connection_name, kind="db", action="delete", reason=exc)
 
     def get_ssh_password(self, connection_name: str) -> str | None:
@@ -296,6 +301,11 @@ class KeyringCredentialsService(CredentialsService):
             key = self._make_key(connection_name, "ssh")
             keyring.delete_password(KEYRING_SERVICE_NAME, key)
         except Exception as exc:
+            # Ignore "password not found" errors - deleting non-existent password is a no-op
+            exc_type = type(exc).__name__
+            exc_msg = str(exc).lower()
+            if exc_type == "PasswordDeleteError" or "no such password" in exc_msg:
+                return
             self._raise_keyring_error(connection_name=connection_name, kind="ssh", action="delete", reason=exc)
 
 
