@@ -80,15 +80,6 @@ class QueryNormalModeState(State):
 
         left.append(
             DisplayBinding(
-                key=resolve_display_key("change_leader_key") or "c",
-                label="Change",
-                action="change_leader_key",
-            )
-        )
-        seen.add("change_leader_key")
-
-        left.append(
-            DisplayBinding(
                 key=resolve_display_key("delete_leader_key") or "d",
                 label="Delete",
                 action="delete_leader_key",
@@ -96,13 +87,8 @@ class QueryNormalModeState(State):
         )
         seen.add("delete_leader_key")
 
-        left.append(
-            DisplayBinding(
-                key=resolve_display_key("g_leader_key") or "g",
-                label="Go",
-                action="g_leader_key",
-            )
-        )
+        # Keep change and go actions available but not shown in footer
+        seen.add("change_leader_key")
         seen.add("g_leader_key")
 
         left.append(

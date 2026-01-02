@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from datetime import datetime
 from typing import Any
 
@@ -135,7 +136,7 @@ class QueryHistoryScreen(ModalScreen):
 
     def compose(self) -> ComposeResult:
         title = f"Query History - {self.connection_name}"
-        shortcuts = [("Filter", "/"), ("Select", "<enter>"), ("Star", "*"), ("Delete", "D"), ("Close", "<esc>")]
+        shortcuts = [("Select", "<enter>"), ("Star", "*"), ("Delete", "D")]
 
         self._merged_entries = self._merge_entries()
 
@@ -399,8 +400,12 @@ class QueryHistoryScreen(ModalScreen):
     def _build_option(self, entry: QueryHistoryEntry) -> Option:
         time_str = self._entry_time_label(entry)
         star = "[yellow]*[/] " if entry.is_starred else "  "
-        query_preview = entry.query.replace("\n", " ")[:55]
-        if len(entry.query) > 55:
-            query_preview += "..."
+        # Collapse all whitespace to single spaces and strip
+        query_single_line = re.sub(r"\s+", " ", entry.query).strip()
+        max_len = 55
+        if len(query_single_line) > max_len:
+            query_preview = query_single_line[:max_len] + "..."
+        else:
+            query_preview = query_single_line
         option_id = self._entry_option_id(entry)
         return Option(f"{star}[dim]{time_str}[/]  {query_preview}", id=option_id)
