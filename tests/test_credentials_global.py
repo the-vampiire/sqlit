@@ -50,16 +50,18 @@ class TestGlobalCredentialsService:
 
     @patch("sqlit.domains.connections.app.credentials.is_keyring_usable", return_value=False)
     @patch("sqlit.domains.shell.store.settings.SettingsStore.get_instance")
-    def test_fallback_to_keyring_when_no_consent(
+    def test_fallback_to_plaintext_when_no_consent(
         self, mock_store_get: MagicMock, _mock_usable: MagicMock
     ) -> None:
-        """Test fallback to keyring when consent is not recorded."""
+        """Test fallback to in-memory plaintext when keyring unavailable and no consent."""
         mock_store = MagicMock()
         mock_store.load_all.return_value = {}
         mock_store_get.return_value = mock_store
         reset_credentials_service()
         service = get_credentials_service()
-        assert isinstance(service, KeyringCredentialsService)
+        # When keyring is not usable and no consent for file storage,
+        # we use in-memory PlaintextCredentialsService (safe, no persistence)
+        assert isinstance(service, PlaintextCredentialsService)
 
     @patch("sqlit.domains.connections.app.credentials.is_keyring_usable", return_value=False)
     @patch("sqlit.domains.shell.store.settings.SettingsStore.get_instance")

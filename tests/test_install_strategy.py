@@ -25,6 +25,7 @@ def test_detect_strategy_externally_managed_disables_auto_install(tmp_path):
 
     probe = SystemProbe(
         env={},
+        executable="/usr/bin/python3",  # Avoid pipx detection from real sys.executable
         prefix="system",
         base_prefix="system",
         stdlib_paths=[str(marker_dir)],
@@ -40,6 +41,7 @@ def test_detect_strategy_externally_managed_disables_auto_install(tmp_path):
 def test_detect_strategy_pip_user_fallback(tmp_path):
     probe = SystemProbe(
         env={},
+        executable="/usr/bin/python3",  # Avoid pipx detection from real sys.executable
         prefix="system",
         base_prefix="system",
         pip_available=True,
