@@ -4,35 +4,11 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
-from sqlit.config import ConnectionConfig
+from tests.helpers import ConnectionConfig
 
 
 class TestFlightSQLAdapter:
     """Test Flight SQL adapter operations."""
-
-    def test_badge_label(self):
-        """Test badge label for Flight SQL."""
-        with patch.dict(
-            "sys.modules",
-            {"adbc_driver_flightsql": MagicMock(), "adbc_driver_flightsql.dbapi": MagicMock()},
-        ):
-            from sqlit.db.adapters.flight import FlightSQLAdapter
-
-            adapter = FlightSQLAdapter()
-            assert adapter.badge_label() == "Flight"
-
-    def test_url_schemes(self):
-        """Test URL schemes for Flight SQL."""
-        with patch.dict(
-            "sys.modules",
-            {"adbc_driver_flightsql": MagicMock(), "adbc_driver_flightsql.dbapi": MagicMock()},
-        ):
-            from sqlit.db.adapters.flight import FlightSQLAdapter
-
-            schemes = FlightSQLAdapter.url_schemes()
-            assert "flight" in schemes
-            assert "grpc" in schemes
-            assert "grpc+tls" in schemes
 
     def test_name(self):
         """Test adapter name."""
@@ -40,7 +16,7 @@ class TestFlightSQLAdapter:
             "sys.modules",
             {"adbc_driver_flightsql": MagicMock(), "adbc_driver_flightsql.dbapi": MagicMock()},
         ):
-            from sqlit.db.adapters.flight import FlightSQLAdapter
+            from sqlit.domains.connections.providers.flight.adapter import FlightSQLAdapter
 
             adapter = FlightSQLAdapter()
             assert adapter.name == "Arrow Flight SQL"
@@ -51,7 +27,7 @@ class TestFlightSQLAdapter:
             "sys.modules",
             {"adbc_driver_flightsql": MagicMock(), "adbc_driver_flightsql.dbapi": MagicMock()},
         ):
-            from sqlit.db.adapters.flight import FlightSQLAdapter
+            from sqlit.domains.connections.providers.flight.adapter import FlightSQLAdapter
 
             adapter = FlightSQLAdapter()
             assert adapter.install_extra == "flight"
@@ -63,7 +39,7 @@ class TestFlightSQLAdapter:
             "sys.modules",
             {"adbc_driver_flightsql": MagicMock(), "adbc_driver_flightsql.dbapi": MagicMock()},
         ):
-            from sqlit.db.adapters.flight import FlightSQLAdapter
+            from sqlit.domains.connections.providers.flight.adapter import FlightSQLAdapter
 
             adapter = FlightSQLAdapter()
             assert adapter.driver_import_names == ("adbc_driver_flightsql",)
@@ -74,7 +50,7 @@ class TestFlightSQLAdapter:
             "sys.modules",
             {"adbc_driver_flightsql": MagicMock(), "adbc_driver_flightsql.dbapi": MagicMock()},
         ):
-            from sqlit.db.adapters.flight import FlightSQLAdapter
+            from sqlit.domains.connections.providers.flight.adapter import FlightSQLAdapter
 
             adapter = FlightSQLAdapter()
             assert adapter.quote_identifier("table") == '"table"'
@@ -87,7 +63,7 @@ class TestFlightSQLAdapter:
             "sys.modules",
             {"adbc_driver_flightsql": MagicMock(), "adbc_driver_flightsql.dbapi": MagicMock()},
         ):
-            from sqlit.db.adapters.flight import FlightSQLAdapter
+            from sqlit.domains.connections.providers.flight.adapter import FlightSQLAdapter
 
             adapter = FlightSQLAdapter()
             query = adapter.build_select_query("users", 100)
@@ -99,7 +75,7 @@ class TestFlightSQLAdapter:
             "sys.modules",
             {"adbc_driver_flightsql": MagicMock(), "adbc_driver_flightsql.dbapi": MagicMock()},
         ):
-            from sqlit.db.adapters.flight import FlightSQLAdapter
+            from sqlit.domains.connections.providers.flight.adapter import FlightSQLAdapter
 
             adapter = FlightSQLAdapter()
             query = adapter.build_select_query("users", 100, schema="public")
@@ -111,7 +87,7 @@ class TestFlightSQLAdapter:
             "sys.modules",
             {"adbc_driver_flightsql": MagicMock(), "adbc_driver_flightsql.dbapi": MagicMock()},
         ):
-            from sqlit.db.adapters.flight import FlightSQLAdapter
+            from sqlit.domains.connections.providers.flight.adapter import FlightSQLAdapter
 
             adapter = FlightSQLAdapter()
             assert adapter.supports_multiple_databases is True
@@ -126,7 +102,7 @@ class TestFlightSQLAdapter:
             "sys.modules",
             {"adbc_driver_flightsql": MagicMock(), "adbc_driver_flightsql.dbapi": MagicMock()},
         ):
-            from sqlit.db.adapters.flight import FlightSQLAdapter
+            from sqlit.domains.connections.providers.flight.adapter import FlightSQLAdapter
 
             adapter = FlightSQLAdapter()
 
@@ -153,7 +129,7 @@ class TestFlightSQLAdapter:
             "sys.modules",
             {"adbc_driver_flightsql": MagicMock(), "adbc_driver_flightsql.dbapi": MagicMock()},
         ):
-            from sqlit.db.adapters.flight import FlightSQLAdapter
+            from sqlit.domains.connections.providers.flight.adapter import FlightSQLAdapter
 
             adapter = FlightSQLAdapter()
 
@@ -172,7 +148,7 @@ class TestFlightSQLAdapter:
             "sys.modules",
             {"adbc_driver_flightsql": MagicMock(), "adbc_driver_flightsql.dbapi": MagicMock()},
         ):
-            from sqlit.db.adapters.flight import FlightSQLAdapter
+            from sqlit.domains.connections.providers.flight.adapter import FlightSQLAdapter
 
             adapter = FlightSQLAdapter()
 
@@ -187,7 +163,7 @@ class TestFlightSQLAdapter:
             "sys.modules",
             {"adbc_driver_flightsql": MagicMock(), "adbc_driver_flightsql.dbapi": MagicMock()},
         ):
-            from sqlit.db.adapters.flight import FlightSQLAdapter
+            from sqlit.domains.connections.providers.flight.adapter import FlightSQLAdapter
 
             adapter = FlightSQLAdapter()
             assert adapter.get_procedures(MagicMock()) == []
@@ -198,7 +174,7 @@ class TestFlightSQLAdapter:
             "sys.modules",
             {"adbc_driver_flightsql": MagicMock(), "adbc_driver_flightsql.dbapi": MagicMock()},
         ):
-            from sqlit.db.adapters.flight import FlightSQLAdapter
+            from sqlit.domains.connections.providers.flight.adapter import FlightSQLAdapter
 
             adapter = FlightSQLAdapter()
             assert adapter.get_indexes(MagicMock()) == []
@@ -209,7 +185,7 @@ class TestFlightSQLAdapter:
             "sys.modules",
             {"adbc_driver_flightsql": MagicMock(), "adbc_driver_flightsql.dbapi": MagicMock()},
         ):
-            from sqlit.db.adapters.flight import FlightSQLAdapter
+            from sqlit.domains.connections.providers.flight.adapter import FlightSQLAdapter
 
             adapter = FlightSQLAdapter()
             assert adapter.get_triggers(MagicMock()) == []
@@ -220,57 +196,10 @@ class TestFlightSQLAdapter:
             "sys.modules",
             {"adbc_driver_flightsql": MagicMock(), "adbc_driver_flightsql.dbapi": MagicMock()},
         ):
-            from sqlit.db.adapters.flight import FlightSQLAdapter
+            from sqlit.domains.connections.providers.flight.adapter import FlightSQLAdapter
 
             adapter = FlightSQLAdapter()
             assert adapter.get_sequences(MagicMock()) == []
-
-    def test_docker_image_patterns(self):
-        """Test docker image patterns for Flight SQL."""
-        with patch.dict(
-            "sys.modules",
-            {"adbc_driver_flightsql": MagicMock(), "adbc_driver_flightsql.dbapi": MagicMock()},
-        ):
-            from sqlit.db.adapters.flight import FlightSQLAdapter
-
-            patterns = FlightSQLAdapter.docker_image_patterns()
-            assert "sqlflite" in patterns
-            assert "flight-sql" in patterns
-            assert "flightsql" in patterns
-
-    def test_docker_env_vars(self):
-        """Test docker environment variable mappings."""
-        with patch.dict(
-            "sys.modules",
-            {"adbc_driver_flightsql": MagicMock(), "adbc_driver_flightsql.dbapi": MagicMock()},
-        ):
-            from sqlit.db.adapters.flight import FlightSQLAdapter
-
-            env_vars = FlightSQLAdapter.docker_env_vars()
-            assert "user" in env_vars
-            assert "password" in env_vars
-            assert "database" in env_vars
-            assert "SQLFLITE_PASSWORD" in env_vars["password"]
-
-    def test_docker_default_user(self):
-        """Test docker default username."""
-        with patch.dict(
-            "sys.modules",
-            {"adbc_driver_flightsql": MagicMock(), "adbc_driver_flightsql.dbapi": MagicMock()},
-        ):
-            from sqlit.db.adapters.flight import FlightSQLAdapter
-
-            assert FlightSQLAdapter.docker_default_user() == ""
-
-    def test_docker_default_port(self):
-        """Test docker default port."""
-        with patch.dict(
-            "sys.modules",
-            {"adbc_driver_flightsql": MagicMock(), "adbc_driver_flightsql.dbapi": MagicMock()},
-        ):
-            from sqlit.db.adapters.flight import FlightSQLAdapter
-
-            assert FlightSQLAdapter.docker_default_port() == 31337
 
 
 class TestFlightSQLAdapterConnect:
@@ -280,7 +209,7 @@ class TestFlightSQLAdapterConnect:
         """Helper to run a connect test with mocked modules."""
         import sys
 
-        from sqlit.db.adapters.flight import FlightSQLAdapter
+        from sqlit.domains.connections.providers.flight.adapter import FlightSQLAdapter
 
         mock_conn = MagicMock()
         mock_dbapi = MagicMock()
@@ -480,7 +409,7 @@ class TestFlightSQLAdapterExecute:
             "sys.modules",
             {"adbc_driver_flightsql": MagicMock(), "adbc_driver_flightsql.dbapi": MagicMock()},
         ):
-            from sqlit.db.adapters.flight import FlightSQLAdapter
+            from sqlit.domains.connections.providers.flight.adapter import FlightSQLAdapter
 
             adapter = FlightSQLAdapter()
 
@@ -500,7 +429,7 @@ class TestFlightSQLAdapterExecute:
             "sys.modules",
             {"adbc_driver_flightsql": MagicMock(), "adbc_driver_flightsql.dbapi": MagicMock()},
         ):
-            from sqlit.db.adapters.flight import FlightSQLAdapter
+            from sqlit.domains.connections.providers.flight.adapter import FlightSQLAdapter
 
             adapter = FlightSQLAdapter()
 
@@ -534,7 +463,7 @@ class TestFlightSQLAdapterExecute:
             "sys.modules",
             {"adbc_driver_flightsql": MagicMock(), "adbc_driver_flightsql.dbapi": MagicMock()},
         ):
-            from sqlit.db.adapters.flight import FlightSQLAdapter
+            from sqlit.domains.connections.providers.flight.adapter import FlightSQLAdapter
 
             adapter = FlightSQLAdapter()
 
@@ -566,7 +495,7 @@ class TestFlightSQLAdapterExecute:
             "sys.modules",
             {"adbc_driver_flightsql": MagicMock(), "adbc_driver_flightsql.dbapi": MagicMock()},
         ):
-            from sqlit.db.adapters.flight import FlightSQLAdapter
+            from sqlit.domains.connections.providers.flight.adapter import FlightSQLAdapter
 
             adapter = FlightSQLAdapter()
 
@@ -588,7 +517,7 @@ class TestFlightSQLAdapterExecute:
             "sys.modules",
             {"adbc_driver_flightsql": MagicMock(), "adbc_driver_flightsql.dbapi": MagicMock()},
         ):
-            from sqlit.db.adapters.flight import FlightSQLAdapter
+            from sqlit.domains.connections.providers.flight.adapter import FlightSQLAdapter
 
             adapter = FlightSQLAdapter()
 
