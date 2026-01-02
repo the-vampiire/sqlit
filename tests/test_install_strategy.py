@@ -24,7 +24,7 @@ def test_detect_strategy_externally_managed_disables_auto_install(tmp_path):
     (marker_dir / "EXTERNALLY-MANAGED").write_text("managed", encoding="utf-8")
 
     probe = SystemProbe(
-        env={},
+        env={"_SQLIT_TEST": "1"},  # Non-empty to avoid os.environ fallback (empty dict is falsy)
         executable="/usr/bin/python3",  # Avoid pipx detection from real sys.executable
         prefix="system",
         base_prefix="system",
@@ -40,7 +40,7 @@ def test_detect_strategy_externally_managed_disables_auto_install(tmp_path):
 
 def test_detect_strategy_pip_user_fallback(tmp_path):
     probe = SystemProbe(
-        env={},
+        env={"_SQLIT_TEST": "1"},  # Non-empty to avoid os.environ fallback (empty dict is falsy)
         executable="/usr/bin/python3",  # Avoid pipx detection from real sys.executable
         prefix="system",
         base_prefix="system",
