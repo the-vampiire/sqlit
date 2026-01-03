@@ -276,6 +276,11 @@ class ConnectionMixin:
         """Move cursor to the connected node without toggling expansion."""
         if not self.current_config:
             return
+        cursor = self.object_tree.cursor_node
+        if cursor is not None:
+            cursor_config = self._get_connection_config_from_node(cursor)
+            if not cursor_config or cursor_config.name != self.current_config.name:
+                return
         for node in self.object_tree.root.children:
             config = self._get_connection_config_from_node(node)
             if config and config.name == self.current_config.name:
