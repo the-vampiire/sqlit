@@ -46,7 +46,7 @@ class AutocompleteSchemaMixin:
 
     def _load_columns_for_table(self: AutocompleteMixinHost, table_name: str, *, allow_retry: bool = True) -> None:
         """Lazy load columns for a specific table (async via worker)."""
-        if not self.current_connection or not self.current_provider:
+        if self.current_connection is None or self.current_provider is None:
             return
 
         if not hasattr(self, "_columns_loading") or self._columns_loading is None:
@@ -161,7 +161,7 @@ class AutocompleteSchemaMixin:
 
     def _preload_columns_for_query(self: AutocompleteMixinHost) -> None:
         """Preload columns for all tables found in the current query (runs during idle)."""
-        if not self.current_connection or not self.current_provider:
+        if self.current_connection is None or self.current_provider is None:
             return
 
         text = self.query_input.text
@@ -186,7 +186,11 @@ class AutocompleteSchemaMixin:
 
     def _load_schema_cache(self: AutocompleteMixinHost) -> None:
         """Load database schema for autocomplete using threaded workers."""
-        if not self.current_connection or not self.current_config or not self.current_provider:
+        if (
+            self.current_connection is None
+            or self.current_config is None
+            or self.current_provider is None
+        ):
             return
 
         # Cancel any existing schema worker

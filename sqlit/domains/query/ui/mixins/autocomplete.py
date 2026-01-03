@@ -131,7 +131,7 @@ class AutocompleteMixin(AutocompleteSchemaMixin, AutocompleteSuggestionsMixin):
             self._hide_autocomplete()
             return
 
-        if not self.current_connection:
+        if self.current_connection is None:
             return
 
         # Cancel any pending debounce timer

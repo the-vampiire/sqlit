@@ -153,7 +153,7 @@ def refresh_tree(host: TreeMixinHost) -> None:
         node.data = ConnectionNode(config=conn)
         node.allow_expand = is_connected
 
-    if host.current_connection and host.current_config:
+    if host.current_connection is not None and host.current_config is not None:
         populate_connected_tree(host)
 
 
@@ -194,12 +194,12 @@ def refresh_tree_chunked(
         def populate_and_done() -> None:
             if getattr(host, "_tree_refresh_token", None) is not token:
                 return
-            if host.current_connection and host.current_config:
+            if host.current_connection is not None and host.current_config is not None:
                 populate_connected_tree(host)
             if on_done:
                 on_done()
 
-        if host.current_connection and host.current_config:
+        if host.current_connection is not None and host.current_config is not None:
             populate_token = object()
             setattr(host, "_populate_connected_token", populate_token)
 
@@ -289,7 +289,11 @@ def refresh_tree_chunked(
 
 def populate_connected_tree(host: TreeMixinHost) -> None:
     """Populate tree with database objects when connected."""
-    if not host.current_connection or not host.current_config or not host.current_provider:
+    if (
+        host.current_connection is None
+        or host.current_config is None
+        or host.current_provider is None
+    ):
         return
 
     provider = host.current_provider

@@ -47,7 +47,7 @@ class QueryExecutionMixin(ProcessWorkerLifecycleMixin):
 
     def action_execute_query_atomic(self: QueryMixinHost) -> None:
         """Execute query atomically (wrapped in BEGIN/COMMIT with rollback on error)."""
-        if not self.current_connection or not self.current_provider:
+        if self.current_connection is None or self.current_provider is None:
             self.notify("Connect to a server to execute queries", severity="warning")
             return
 
@@ -70,7 +70,7 @@ class QueryExecutionMixin(ProcessWorkerLifecycleMixin):
 
     def _execute_query_common(self: QueryMixinHost, keep_insert_mode: bool) -> None:
         """Common query execution logic."""
-        if not self.current_connection or not self.current_provider:
+        if self.current_connection is None or self.current_provider is None:
             self.notify("Connect to a server to execute queries", severity="warning")
             return
 
@@ -162,17 +162,13 @@ class QueryExecutionMixin(ProcessWorkerLifecycleMixin):
         if callable(parent_connect):
             parent_connect()
 
-        pending = getattr(self, "_pending_telescope_query", None)
-        if not pending:
-            return
+        self._maybe_run_pending_telescope_query()
 
-        connection_name, query = pending
-        self._pending_telescope_query = None
-        if not self.current_config or self.current_config.name != connection_name:
-            return
+    def watch_current_connection(self: QueryMixinHost, old_value: Any, new_value: Any) -> None:
+        self._maybe_run_pending_telescope_query()
 
-        self._apply_history_query(query)
-        self.action_execute_query()
+    def watch_current_provider(self: QueryMixinHost, old_value: Any, new_value: Any) -> None:
+        self._maybe_run_pending_telescope_query()
 
     def _on_connect_failed(self: QueryMixinHost, config: Any) -> None:
         pending = getattr(self, "_pending_telescope_query", None)
@@ -180,6 +176,25 @@ class QueryExecutionMixin(ProcessWorkerLifecycleMixin):
             return
         if getattr(config, "name", None) == pending[0]:
             self._pending_telescope_query = None
+
+    def _maybe_run_pending_telescope_query(self: QueryMixinHost) -> None:
+        if not getattr(self, "_screen_stack", None):
+            return
+        pending = getattr(self, "_pending_telescope_query", None)
+        if not pending:
+            return
+        if (
+            self.current_connection is None
+            or self.current_provider is None
+            or self.current_config is None
+        ):
+            return
+        connection_name, query = pending
+        if self.current_config.name != connection_name:
+            return
+        self._pending_telescope_query = None
+        self._apply_history_query(query)
+        self.action_execute_query()
 
     @property
     def in_transaction(self: QueryMixinHost) -> bool:
@@ -622,7 +637,11 @@ class QueryExecutionMixin(ProcessWorkerLifecycleMixin):
 
         self._apply_history_query(query)
 
-        if self.current_connection and self.current_config and self.current_config.name == connection_name:
+        if (
+            self.current_connection is not None
+            and self.current_config is not None
+            and self.current_config.name == connection_name
+        ):
             self._pending_telescope_query = None
             self.action_execute_query()
             return

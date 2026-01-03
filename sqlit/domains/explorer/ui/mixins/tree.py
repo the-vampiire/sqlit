@@ -52,7 +52,7 @@ class TreeMixin(TreeSchemaMixin, TreeLabelMixin):
         tree_expansion_state.update_expanded_state(self, node, expanded=True)
         self._schedule_expanded_state_persist()
 
-        if not node.data or not self.current_connection or not self.current_provider:
+        if not node.data or self.current_connection is None or self.current_provider is None:
             return
 
         data = node.data
@@ -269,7 +269,7 @@ class TreeMixin(TreeSchemaMixin, TreeLabelMixin):
         if not node or self._get_node_kind(node) != "database":
             return
 
-        if not self.current_connection or not self.current_config:
+        if self.current_connection is None or self.current_config is None:
             self.notify("Not connected", severity="error")
             return
 

@@ -55,6 +55,9 @@ class ConnectionMixin:
             return
         self._update_status_bar()
         self._update_section_labels()
+        pending_runner = getattr(self, "_maybe_run_pending_telescope_query", None)
+        if callable(pending_runner):
+            pending_runner()
         if old_config and new_config and self._connection_identity(old_config) == self._connection_identity(new_config):
             try:
                 tree_db_switching.update_database_labels(self)
@@ -171,7 +174,7 @@ class ConnectionMixin:
 
     def _do_connect(self: ConnectionMixinHost, config: ConnectionConfig) -> None:
         # Disconnect from current server first (if any)
-        if self.current_connection:
+        if self.current_connection is not None:
             self._disconnect_silent()
 
         self._connection_failed = False
@@ -210,7 +213,7 @@ class ConnectionMixin:
                 def load_schema_cache() -> None:
                     if attempt_id != self._connection_attempt_id:
                         return
-                    if not self.current_connection or not self.current_config:
+                    if self.current_connection is None or self.current_config is None:
                         return
                     self._load_schema_cache()
 
@@ -320,7 +323,7 @@ class ConnectionMixin:
 
     def action_disconnect(self: ConnectionMixinHost) -> None:
         """Disconnect from current database."""
-        if self.current_connection:
+        if self.current_connection is not None:
             self._disconnect_silent()
             self.status_bar.update("Disconnected")
             self.notify("Disconnected")
