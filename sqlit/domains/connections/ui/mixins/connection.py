@@ -635,7 +635,7 @@ class ConnectionMixin:
                         "connection_picker.select_node",
                         connection=config.name,
                     )
-                    self.object_tree.select_node(node)
+                    self.object_tree.move_cursor(node)
                     break
             if self.current_config and self.current_config.name == config.name:
                 self._emit_debug("connection_picker.already_connected", connection=config.name)
@@ -652,7 +652,7 @@ class ConnectionMixin:
                 node_config = self._get_connection_config_from_node(node)
                 if node_config and node_config.name == result:
                     self._emit_debug("connection_picker.select_node", connection=selected_config.name)
-                    self.object_tree.select_node(node)
+                    self.object_tree.move_cursor(node)
                     break
 
             if self.current_config and self.current_config.name == selected_config.name:

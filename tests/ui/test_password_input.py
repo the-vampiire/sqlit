@@ -14,7 +14,7 @@ from sqlit.domains.connections.ui.screens.password_input import PasswordInputScr
 from sqlit.shared.app.runtime import MockConfig, RuntimeConfig
 from tests.helpers import ConnectionConfig
 
-from .mocks import build_test_services
+from .mocks import MockConnectionStore, MockSettingsStore, build_test_services
 
 
 @dataclass
@@ -239,6 +239,67 @@ class TestConnectionPasswordFlow:
             # Should have pushed PasswordInputScreen
             assert isinstance(app.screen, PasswordInputScreen)
             assert app.screen.connection_name == "test_db"
+
+    @pytest.mark.asyncio
+    async def test_connection_picker_escape_closes_password_prompt(self) -> None:
+        """Connection picker password prompt closes on first Escape."""
+        from textual.widgets import OptionList
+
+        from sqlit.domains.connections.ui.screens import ConnectionPickerScreen
+        from sqlit.domains.shell.app.main import SSMSTUI
+
+        connections = [
+            ConnectionConfig(
+                name="prompt_db",
+                db_type="postgresql",
+                server="localhost",
+                port="5432",
+                database="testdb",
+                username="user",
+                password=None,
+            )
+        ]
+        services = build_test_services(
+            connection_store=MockConnectionStore(connections),
+            settings_store=MockSettingsStore({"theme": "tokyo-night"}),
+        )
+        app = SSMSTUI(services=services)
+
+        async with app.run_test(size=(100, 35)) as pilot:
+            app.action_show_connection_picker()
+            await pilot.pause()
+
+            picker = next(
+                (s for s in app.screen_stack if isinstance(s, ConnectionPickerScreen)),
+                None,
+            )
+            assert picker is not None
+
+            option_list = picker.query_one("#picker-list", OptionList)
+            if option_list.highlighted is None:
+                for index in range(option_list.option_count):
+                    option = option_list.get_option_at_index(index)
+                    if option and not option.disabled:
+                        option_list.highlighted = index
+                        break
+            option_list.focus()
+            await pilot.pause()
+
+            await pilot.press("enter")
+            await pilot.pause()
+
+            prompt_screens = [
+                screen for screen in app.screen_stack if isinstance(screen, PasswordInputScreen)
+            ]
+            assert prompt_screens, "Password prompt should be shown"
+
+            await pilot.press("escape")
+            await pilot.pause()
+
+            prompt_screens = [
+                screen for screen in app.screen_stack if isinstance(screen, PasswordInputScreen)
+            ]
+            assert not prompt_screens, "Password prompt should close on first Escape"
 
     @pytest.mark.asyncio
     async def test_connect_with_stored_password_no_prompt(self) -> None:
