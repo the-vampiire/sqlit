@@ -6,6 +6,7 @@ from unittest.mock import MagicMock, patch
 
 from sqlit.domains.connections.cli.prompts import prompt_for_password
 from sqlit.domains.connections.domain.passwords import needs_db_password, needs_ssh_password
+from sqlit.domains.connections.providers.config_service import normalize_connection_config
 from tests.helpers import ConnectionConfig
 
 
@@ -92,6 +93,19 @@ class TestNeedsDbPassword:
             options={"auth_type": "sql"},
         )
         assert needs_db_password(config)
+
+    def test_mssql_empty_password_prompts_after_normalize(self) -> None:
+        """SQL Server with empty password should prompt after normalization."""
+        config = ConnectionConfig(
+            name="test",
+            db_type="mssql",
+            server="localhost",
+            username="sa",
+            password="",
+            options={"auth_type": "sql"},
+        )
+        normalized = normalize_connection_config(config)
+        assert needs_db_password(normalized)
 
     def test_mssql_windows_auth_with_none_password(self) -> None:
         """SQL Server with Windows auth doesn't need a password prompt.

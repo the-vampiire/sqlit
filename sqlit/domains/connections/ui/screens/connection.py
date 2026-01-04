@@ -651,7 +651,10 @@ class ConnectionScreen(ModalScreen):
         config_data["endpoint"] = endpoint
         config_data["tunnel"] = tunnel
 
-        return ConnectionConfig.from_dict(config_data)
+        config = ConnectionConfig.from_dict(config_data)
+        from sqlit.domains.connections.providers.config_service import normalize_connection_config
+
+        return normalize_connection_config(config)
 
     def action_test_connection(self) -> None:
         from .password_input import PasswordInputScreen

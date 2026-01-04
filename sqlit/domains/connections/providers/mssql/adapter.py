@@ -101,6 +101,10 @@ class SQLServerAdapter(DatabaseAdapter):
             config.set_option("auth_type", "sql")
             config.set_option("trusted_connection", False)
 
+        auth_type = str(config.get_option("auth_type") or "sql")
+        if endpoint and endpoint.password == "" and auth_type in ("sql", "ad_password"):
+            endpoint.password = None
+
         return config
 
     def detect_capabilities(self, conn: Any, config: ConnectionConfig) -> None:
