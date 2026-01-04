@@ -481,7 +481,10 @@ def run_process_worker(conn: Connection) -> None:
             state._cleanup_current()
             state._maybe_start_next()
             if conn.poll(0.1):
-                message = conn.recv()
+                try:
+                    message = conn.recv()
+                except EOFError:
+                    break
                 message_type = message.get("type")
                 if message_type == "shutdown":
                     break

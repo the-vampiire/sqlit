@@ -160,6 +160,10 @@ class UINavigationMixin(UIStatusMixin, UILeaderMixin):
         self._update_section_labels()
         self._update_footer_bindings()
 
+    def action_quit(self: UINavigationMixinHost) -> None:
+        """Quit the application."""
+        self.exit()
+
     def action_show_help(self: UINavigationMixinHost) -> None:
         """Show help with all keybindings."""
         from ..screens import HelpScreen
