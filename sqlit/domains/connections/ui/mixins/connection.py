@@ -84,14 +84,36 @@ class ConnectionMixin:
         if not screen_stack:
             return
 
-        def after_refresh() -> None:
-            try:
-                self.call_after_refresh(self._select_connected_node)
-                self.call_after_refresh(lambda: tree_db_switching.update_database_labels(self))
-            except Exception:
-                pass
+        token = object()
+        setattr(self, "_connection_tree_refresh_token", token)
 
-        tree_builder.refresh_tree_chunked(self, on_done=after_refresh)
+        def do_refresh() -> None:
+            if getattr(self, "_connection_tree_refresh_token", None) is not token:
+                return
+
+            def after_refresh() -> None:
+                try:
+                    self.call_after_refresh(self._select_connected_node)
+                    self.call_after_refresh(lambda: tree_db_switching.update_database_labels(self))
+                except Exception:
+                    pass
+
+            tree_builder.refresh_tree_chunked(self, on_done=after_refresh)
+
+        try:
+            from sqlit.domains.shell.app.idle_scheduler import Priority, get_idle_scheduler
+        except Exception:
+            scheduler = None
+        else:
+            scheduler = get_idle_scheduler()
+        if scheduler:
+            scheduler.request_idle_callback(
+                do_refresh,
+                priority=Priority.NORMAL,
+                name="connection-tree-refresh",
+            )
+        else:
+            self.set_timer(0.001, do_refresh)
 
     def _get_connection_flow(self: ConnectionMixinHost) -> ConnectionFlow:
         flow = getattr(self, "_connection_flow", None)
@@ -452,7 +474,7 @@ class ConnectionMixin:
                     self.services.connection_store.save_all(self.connections)
                 except CredentialsPersistError as exc:
                     credentials_error = exc
-                tree_builder.refresh_tree(self)
+                self._refresh_connection_tree()
                 self.notify(f"Connection '{with_config.name}' saved")
                 if credentials_error:
                     self.push_screen(ErrorScreen("Keyring Error", str(credentials_error)))
@@ -579,7 +601,7 @@ class ConnectionMixin:
             self.services.connection_store.save_all(self.connections)
         except CredentialsPersistError as exc:
             credentials_error = exc
-        tree_builder.refresh_tree(self)
+        self._refresh_connection_tree()
         self.notify(f"Connection '{config.name}' deleted")
         if credentials_error:
             self.push_screen(ErrorScreen("Keyring Error", str(credentials_error)))

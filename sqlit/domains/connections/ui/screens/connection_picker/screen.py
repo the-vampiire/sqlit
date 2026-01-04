@@ -578,7 +578,7 @@ class ConnectionPickerScreen(ModalScreen):
             return
 
         self._rebuild_list()
-        tree_builder.refresh_tree(cast(Any, self.app))
+        tree_builder.refresh_tree_chunked(cast(Any, self.app))
 
         if self._current_tab == TAB_DOCKER:
             self._select_option_by_id(option_id)

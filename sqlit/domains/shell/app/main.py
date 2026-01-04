@@ -43,6 +43,7 @@ from sqlit.shared.app import AppServices, RuntimeConfig, build_app_services
 from sqlit.shared.core.debug_events import (
     DebugEvent,
     DebugEventBus,
+    format_debug_data,
     serialize_debug_event,
     set_debug_emitter,
 )
@@ -165,6 +166,8 @@ class SSMSTUI(
         self._debug_events_enabled: bool = False
         self._debug_event_history: list[DebugEvent] = []
         self._debug_event_history_limit: int = 200
+        self._debug_event_recent_window_s: float = 2.0
+        self._debug_event_recent_limit: int = 40
         self._debug_event_log_path: Path = CONFIG_DIR / "debug_events.txt"
         set_debug_emitter(self.emit_debug_event)
         self._last_key: str | None = None
@@ -293,6 +296,31 @@ class SSMSTUI(
         if len(self._debug_event_history) > self._debug_event_history_limit:
             self._debug_event_history = self._debug_event_history[-self._debug_event_history_limit:]
         self._write_debug_event(event)
+
+    def _collect_recent_debug_events(self, *, now: float) -> list[dict[str, Any]]:
+        if not self._debug_events_enabled:
+            return []
+        events = self._debug_event_history
+        if not events:
+            return []
+        cutoff = now - self._debug_event_recent_window_s
+        recent = [event for event in events if event.ts >= cutoff]
+        if not recent:
+            return []
+        if len(recent) > self._debug_event_recent_limit:
+            recent = recent[-self._debug_event_recent_limit:]
+        summaries: list[dict[str, Any]] = []
+        for event in recent:
+            summaries.append(
+                {
+                    "time": event.iso,
+                    "name": event.name,
+                    "category": event.category,
+                    "data": format_debug_data(event.data, max_len=160),
+                    "age_ms": int((now - event.ts) * 1000),
+                }
+            )
+        return summaries
 
     def _write_debug_event(self, event: DebugEvent) -> None:
         path = self._debug_event_log_path
@@ -920,6 +948,8 @@ class SSMSTUI(
         stall = now - expected
         if stall > self._ui_stall_watchdog_threshold_s:
             suffix = self._build_ui_stall_context()
+            wall_now = time.time()
+            recent_debug = self._collect_recent_debug_events(now=wall_now)
             try:
                 timestamp = datetime.now().strftime("%H:%M:%S")
             except Exception:
@@ -927,7 +957,25 @@ class SSMSTUI(
             self._ui_stall_watchdog_events.append((timestamp, stall * 1000.0, suffix))
             if len(self._ui_stall_watchdog_events) > 50:
                 self._ui_stall_watchdog_events = self._ui_stall_watchdog_events[-50:]
-            self._schedule_ui_stall_log_write(timestamp, stall * 1000.0, suffix)
+            extra_lines: list[str] = []
+            if recent_debug:
+                context = suffix.strip()
+                if context.startswith("(") and context.endswith(")"):
+                    context = context[1:-1]
+                self.emit_debug_event(
+                    "watchdog.stall",
+                    category="watchdog",
+                    stall_ms=stall * 1000.0,
+                    context=context,
+                    recent=recent_debug,
+                )
+                for item in recent_debug:
+                    data = item.get("data", "")
+                    data_suffix = f" {data}" if data else ""
+                    extra_lines.append(
+                        f"  debug {item.get('time','')} {item.get('category','')} {item.get('name','')} age={item.get('age_ms',0)}ms{data_suffix}"
+                    )
+            self._schedule_ui_stall_log_write(timestamp, stall * 1000.0, suffix, extra_lines=extra_lines)
             try:
                 self.log.warning("UI stall %.1f ms%s", stall * 1000.0, suffix)
             except Exception:
@@ -1044,7 +1092,14 @@ class SSMSTUI(
             return ""
         return f" ({', '.join(parts)})"
 
-    def _schedule_ui_stall_log_write(self, timestamp: str, ms: float, suffix: str) -> None:
+    def _schedule_ui_stall_log_write(
+        self,
+        timestamp: str,
+        ms: float,
+        suffix: str,
+        *,
+        extra_lines: list[str] | None = None,
+    ) -> None:
         line = f"[{timestamp}] {ms:.1f} ms{suffix}"
         path = self._ui_stall_watchdog_log_path
 
@@ -1057,6 +1112,9 @@ class SSMSTUI(
                     pass
                 with path.open("a", encoding="utf-8") as handle:
                     handle.write(line + "\n")
+                    if extra_lines:
+                        for extra in extra_lines:
+                            handle.write(extra + "\n")
             except Exception:
                 pass
 

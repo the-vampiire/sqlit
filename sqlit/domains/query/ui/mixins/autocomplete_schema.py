@@ -9,6 +9,8 @@ from sqlit.domains.query.completion import extract_table_refs
 from sqlit.shared.ui.protocols import AutocompleteMixinHost
 from sqlit.shared.ui.spinner import Spinner
 
+SCHEMA_PROCESS_BATCH_SIZE = 200
+
 
 class AutocompleteSchemaMixin:
     """Mixin providing schema loading and caching for autocomplete."""
@@ -24,6 +26,7 @@ class AutocompleteSchemaMixin:
     _schema_total_jobs: int = 0
     _schema_completed_jobs: int = 0
     _schema_scheduler: Any | None = None
+    _schema_process_token: int = 0
 
     def _run_db_call(self: AutocompleteMixinHost, fn: Any, *args: Any, **kwargs: Any) -> Any:
         session = getattr(self, "_session", None)
@@ -207,6 +210,7 @@ class AutocompleteSchemaMixin:
         self._table_metadata = {}
         self._columns_loading = set()  # Clear any in-progress column loads
         self._db_object_cache = {}  # Clear shared object cache
+        self._schema_process_token = getattr(self, "_schema_process_token", 0) + 1
 
         # Start schema indexing spinner
         self._start_schema_spinner()
@@ -392,35 +396,41 @@ class AutocompleteSchemaMixin:
             return
         dialect = provider.dialect
 
-        try:
-            single_db = len(getattr(self, "_schema_pending_dbs", [None])) == 1
+        single_db = len(getattr(self, "_schema_pending_dbs", [None])) == 1
+        token = getattr(self, "_schema_process_token", 0)
 
-            for schema_name, table_name in tables:
-                if single_db:
-                    self._schema_cache["tables"].append(table_name)
-                else:
-                    quoted_db = dialect.quote_identifier(database) if database else ""
-                    quoted_schema = dialect.quote_identifier(schema_name)
-                    quoted_table = dialect.quote_identifier(table_name)
-                    if database:
-                        full_name = f"{quoted_db}.{quoted_schema}.{quoted_table}"
+        def work() -> None:
+            try:
+                entries: list[tuple[str, list[tuple[str, tuple[str, str, str | None]]]]] = []
+                for schema_name, table_name in tables:
+                    if single_db:
+                        full_name = table_name
                     else:
-                        full_name = f"{quoted_schema}.{quoted_table}"
-                    self._schema_cache["tables"].append(full_name)
+                        quoted_db = dialect.quote_identifier(database) if database else ""
+                        quoted_schema = dialect.quote_identifier(schema_name)
+                        quoted_table = dialect.quote_identifier(table_name)
+                        if database:
+                            full_name = f"{quoted_db}.{quoted_schema}.{quoted_table}"
+                        else:
+                            full_name = f"{quoted_schema}.{quoted_table}"
 
-                # Store metadata for column loading
-                display_name = dialect.format_table_name(schema_name, table_name)
-                self._table_metadata[display_name.lower()] = (schema_name, table_name, database)
-                self._table_metadata[table_name.lower()] = (schema_name, table_name, database)
-                if database:
-                    self._table_metadata[f"{database}.{table_name}".lower()] = (schema_name, table_name, database)
-                    if not single_db:
-                        self._table_metadata[full_name.lower()] = (schema_name, table_name, database)
+                    display_name = dialect.format_table_name(schema_name, table_name)
+                    metadata = [
+                        (display_name.lower(), (schema_name, table_name, database)),
+                        (table_name.lower(), (schema_name, table_name, database)),
+                    ]
+                    if database:
+                        metadata.append((f"{database}.{table_name}".lower(), (schema_name, table_name, database)))
+                        if not single_db:
+                            metadata.append((full_name.lower(), (schema_name, table_name, database)))
 
-        except Exception as e:
-            self.log.error(f"Error processing tables for {database}: {e}")
+                    entries.append((full_name, metadata))
 
-        self._schema_job_complete()
+                self.call_from_thread(self._apply_schema_entries, "tables", entries, token)
+            except Exception as e:
+                self.call_from_thread(self._on_schema_processing_error, "tables", database, e)
+
+        self.run_worker(work, thread=True, name=f"schema-process-tables-{cache_key}", exclusive=False)
 
     def _load_views_job(self: AutocompleteMixinHost, database: str | None) -> None:
         """Idle job: load views for a single database (dispatches to thread)."""
@@ -475,35 +485,41 @@ class AutocompleteSchemaMixin:
             return
         dialect = provider.dialect
 
-        try:
-            single_db = len(getattr(self, "_schema_pending_dbs", [None])) == 1
+        single_db = len(getattr(self, "_schema_pending_dbs", [None])) == 1
+        token = getattr(self, "_schema_process_token", 0)
 
-            for schema_name, view_name in views:
-                if single_db:
-                    self._schema_cache["views"].append(view_name)
-                else:
-                    quoted_db = dialect.quote_identifier(database) if database else ""
-                    quoted_schema = dialect.quote_identifier(schema_name)
-                    quoted_view = dialect.quote_identifier(view_name)
-                    if database:
-                        full_name = f"{quoted_db}.{quoted_schema}.{quoted_view}"
+        def work() -> None:
+            try:
+                entries: list[tuple[str, list[tuple[str, tuple[str, str, str | None]]]]] = []
+                for schema_name, view_name in views:
+                    if single_db:
+                        full_name = view_name
                     else:
-                        full_name = f"{quoted_schema}.{quoted_view}"
-                    self._schema_cache["views"].append(full_name)
+                        quoted_db = dialect.quote_identifier(database) if database else ""
+                        quoted_schema = dialect.quote_identifier(schema_name)
+                        quoted_view = dialect.quote_identifier(view_name)
+                        if database:
+                            full_name = f"{quoted_db}.{quoted_schema}.{quoted_view}"
+                        else:
+                            full_name = f"{quoted_schema}.{quoted_view}"
 
-                # Store metadata for column loading
-                display_name = dialect.format_table_name(schema_name, view_name)
-                self._table_metadata[display_name.lower()] = (schema_name, view_name, database)
-                self._table_metadata[view_name.lower()] = (schema_name, view_name, database)
-                if database:
-                    self._table_metadata[f"{database}.{view_name}".lower()] = (schema_name, view_name, database)
-                    if not single_db:
-                        self._table_metadata[full_name.lower()] = (schema_name, view_name, database)
+                    display_name = dialect.format_table_name(schema_name, view_name)
+                    metadata = [
+                        (display_name.lower(), (schema_name, view_name, database)),
+                        (view_name.lower(), (schema_name, view_name, database)),
+                    ]
+                    if database:
+                        metadata.append((f"{database}.{view_name}".lower(), (schema_name, view_name, database)))
+                        if not single_db:
+                            metadata.append((full_name.lower(), (schema_name, view_name, database)))
 
-        except Exception as e:
-            self.log.error(f"Error processing views for {database}: {e}")
+                    entries.append((full_name, metadata))
 
-        self._schema_job_complete()
+                self.call_from_thread(self._apply_schema_entries, "views", entries, token)
+            except Exception as e:
+                self.call_from_thread(self._on_schema_processing_error, "views", database, e)
+
+        self.run_worker(work, thread=True, name=f"schema-process-views-{cache_key}", exclusive=False)
 
     def _load_procedures_job(self: AutocompleteMixinHost, database: str | None) -> None:
         """Idle job: load procedures for a single database (dispatches to thread)."""
@@ -553,12 +569,110 @@ class AutocompleteSchemaMixin:
 
     def _process_procedures_result(self: AutocompleteMixinHost, procedures: list, cache_key: str) -> None:
         """Process procedures result on main thread."""
-        try:
-            self._schema_cache["procedures"].extend(procedures)
-        except Exception as e:
-            self.log.error(f"Error processing procedures: {e}")
+        token = getattr(self, "_schema_process_token", 0)
 
+        def work() -> None:
+            try:
+                entries = list(procedures)
+                self.call_from_thread(self._apply_schema_entries, "procedures", entries, token)
+            except Exception as e:
+                self.call_from_thread(self._on_schema_processing_error, "procedures", None, e)
+
+        self.run_worker(work, thread=True, name=f"schema-process-procedures-{cache_key}", exclusive=False)
+
+    def _apply_schema_entries(
+        self: AutocompleteMixinHost,
+        kind: str,
+        entries: list[Any],
+        token: int,
+    ) -> None:
+        if token != getattr(self, "_schema_process_token", 0):
+            return
+
+        if kind == "tables":
+            def process_item(entry: Any) -> None:
+                name, metadata = entry
+                self._schema_cache["tables"].append(name)
+                for key, value in metadata:
+                    self._table_metadata[key] = value
+        elif kind == "views":
+            def process_item(entry: Any) -> None:
+                name, metadata = entry
+                self._schema_cache["views"].append(name)
+                for key, value in metadata:
+                    self._table_metadata[key] = value
+        elif kind == "procedures":
+            def process_item(entry: Any) -> None:
+                self._schema_cache["procedures"].append(entry)
+        else:
+            self._schema_job_complete()
+            return
+
+        self._schedule_schema_processing(
+            entries,
+            process_item=process_item,
+            token=token,
+            on_complete=self._schema_job_complete,
+        )
+
+    def _on_schema_processing_error(
+        self: AutocompleteMixinHost,
+        kind: str,
+        database: str | None,
+        error: Exception,
+    ) -> None:
+        label = f"{kind} for {database}" if database else kind
+        self.log.error(f"Error processing {label}: {error}")
         self._schema_job_complete()
+
+    def _schedule_schema_processing(
+        self: AutocompleteMixinHost,
+        items: list[Any],
+        *,
+        process_item: Any,
+        token: int,
+        on_complete: Any,
+    ) -> None:
+        total = len(items)
+        if total == 0:
+            on_complete()
+            return
+        batch_size = max(1, SCHEMA_PROCESS_BATCH_SIZE)
+        index = 0
+
+        def run_batch() -> None:
+            nonlocal index
+            if token != getattr(self, "_schema_process_token", 0):
+                return
+            end = min(index + batch_size, total)
+            for entry in items[index:end]:
+                try:
+                    process_item(entry)
+                except Exception as error:
+                    self.log.error(f"Error processing schema entry: {error}")
+            index = end
+            if index >= total:
+                on_complete()
+                return
+            schedule_next()
+
+        def schedule_next() -> None:
+            try:
+                from sqlit.domains.shell.app.idle_scheduler import Priority, get_idle_scheduler
+            except Exception:
+                scheduler = None
+            else:
+                scheduler = get_idle_scheduler()
+            if scheduler:
+                scheduler.request_idle_callback(
+                    run_batch,
+                    priority=Priority.LOW,
+                    name="schema-process",
+                )
+            else:
+                self.set_timer(0.001, run_batch)
+
+        schedule_next()
 
     def _schema_job_complete(self: AutocompleteMixinHost) -> None:
         """Called when a schema loading job completes."""
@@ -566,11 +680,50 @@ class AutocompleteSchemaMixin:
         total = getattr(self, "_schema_total_jobs", 1)
 
         if self._schema_completed_jobs >= total:
-            # All jobs done - deduplicate and finalize
-            self._schema_cache["tables"] = list(dict.fromkeys(self._schema_cache["tables"]))
-            self._schema_cache["views"] = list(dict.fromkeys(self._schema_cache["views"]))
-            self._schema_cache["procedures"] = list(dict.fromkeys(self._schema_cache["procedures"]))
-            self._stop_schema_spinner()
+            token = getattr(self, "_schema_process_token", 0)
+            tables = list(self._schema_cache.get("tables", []))
+            views = list(self._schema_cache.get("views", []))
+            procedures = list(self._schema_cache.get("procedures", []))
+
+            if not tables and not views and not procedures:
+                self._stop_schema_spinner()
+                return
+
+            def work() -> None:
+                try:
+                    tables_dedup = list(dict.fromkeys(tables))
+                    views_dedup = list(dict.fromkeys(views))
+                    procedures_dedup = list(dict.fromkeys(procedures))
+                except Exception as e:
+                    self.call_from_thread(self._on_schema_dedup_error, e)
+                    return
+                self.call_from_thread(
+                    self._apply_schema_dedup,
+                    token,
+                    tables_dedup,
+                    views_dedup,
+                    procedures_dedup,
+                )
+
+            self.run_worker(work, thread=True, name="schema-dedup", exclusive=False)
+
+    def _apply_schema_dedup(
+        self: AutocompleteMixinHost,
+        token: int,
+        tables: list[str],
+        views: list[str],
+        procedures: list[str],
+    ) -> None:
+        if token != getattr(self, "_schema_process_token", 0):
+            return
+        self._schema_cache["tables"] = tables
+        self._schema_cache["views"] = views
+        self._schema_cache["procedures"] = procedures
+        self._stop_schema_spinner()
+
+    def _on_schema_dedup_error(self: AutocompleteMixinHost, error: Exception) -> None:
+        self.log.error(f"Error deduplicating schema cache: {error}")
+        self._stop_schema_spinner()
 
     def _start_schema_spinner(self: AutocompleteMixinHost) -> None:
         """Start the schema indexing spinner animation."""
@@ -594,6 +747,7 @@ class AutocompleteSchemaMixin:
         if hasattr(self, "_schema_worker") and self._schema_worker is not None:
             self._schema_worker.cancel()
             self._schema_worker = None
+        self._schema_process_token = getattr(self, "_schema_process_token", 0) + 1
         self._stop_schema_spinner()
         self.notify("Schema indexing cancelled")
 

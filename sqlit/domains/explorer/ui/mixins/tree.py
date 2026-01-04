@@ -200,12 +200,34 @@ class TreeMixin(TreeSchemaMixin, TreeLabelMixin):
             self._loading_nodes.clear()
         self._schema_service = None
         self.refresh_tree()
-        if hasattr(self, "_load_schema_cache"):
-            self._load_schema_cache()
+        loader = getattr(self, "_load_schema_cache", None)
+        if callable(loader):
+            request_token = object()
+            setattr(self, "_schema_load_request_token", request_token)
+
+            def run_loader() -> None:
+                if getattr(self, "_schema_load_request_token", None) is not request_token:
+                    return
+                loader()
+
+            try:
+                from sqlit.domains.shell.app.idle_scheduler import Priority, get_idle_scheduler
+            except Exception:
+                scheduler = None
+            else:
+                scheduler = get_idle_scheduler()
+            if scheduler:
+                scheduler.request_idle_callback(
+                    run_loader,
+                    priority=Priority.LOW,
+                    name="schema-load",
+                )
+            else:
+                self.set_timer(MIN_TIMER_DELAY_S, run_loader)
         self.notify("Refreshed")
 
     def refresh_tree(self: TreeMixinHost) -> None:
-        tree_builder.refresh_tree(self)
+        tree_builder.refresh_tree_chunked(self)
 
     def action_collapse_tree(self: TreeMixinHost) -> None:
         """Collapse all nodes in the explorer."""
@@ -455,8 +477,30 @@ class TreeMixin(TreeSchemaMixin, TreeLabelMixin):
         self._update_status_bar()
         tree_db_switching.update_database_labels(self)
         self._get_object_cache().clear()
-        if hasattr(self, "_load_schema_cache"):
-            self._load_schema_cache()
+        loader = getattr(self, "_load_schema_cache", None)
+        if callable(loader):
+            request_token = object()
+            setattr(self, "_schema_load_request_token", request_token)
+
+            def run_loader() -> None:
+                if getattr(self, "_schema_load_request_token", None) is not request_token:
+                    return
+                loader()
+
+            try:
+                from sqlit.domains.shell.app.idle_scheduler import Priority, get_idle_scheduler
+            except Exception:
+                scheduler = None
+            else:
+                scheduler = get_idle_scheduler()
+            if scheduler:
+                scheduler.request_idle_callback(
+                    run_loader,
+                    priority=Priority.LOW,
+                    name="schema-load",
+                )
+            else:
+                self.set_timer(MIN_TIMER_DELAY_S, run_loader)
         if callable(on_ready):
             on_ready()
 
