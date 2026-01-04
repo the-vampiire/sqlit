@@ -10,6 +10,8 @@ from sqlit.shared.ui.widgets import SqlitDataTable
 
 from .query_constants import MAX_COLUMN_CONTENT_WIDTH, MAX_RENDER_ROWS
 
+RESULTS_RENDER_CHUNK_SIZE = 200
+
 
 class QueryResultsMixin:
     """Mixin providing results rendering for queries."""
@@ -84,6 +86,82 @@ class QueryResultsMixin:
             self._results_render_worker = None
         token = getattr(self, "_results_render_token", 0)
         self._results_render_token = token + 1
+        try:
+            from sqlit.domains.shell.app.idle_scheduler import get_idle_scheduler
+        except Exception:
+            scheduler = None
+        else:
+            scheduler = get_idle_scheduler()
+        if scheduler:
+            scheduler.cancel_all(name="results-render")
+
+    def _schedule_results_render(
+        self: QueryMixinHost,
+        table: SqlitDataTable,
+        rows: list[tuple],
+        *,
+        row_limit: int,
+        render_token: int,
+    ) -> None:
+        if not rows or row_limit <= 0:
+            return
+
+        index = 0
+        total = min(len(rows), row_limit)
+
+        def add_batch() -> None:
+            nonlocal index
+            if render_token != getattr(self, "_results_render_token", 0):
+                return
+            end = min(index + RESULTS_RENDER_CHUNK_SIZE, total)
+            if end <= index:
+                return
+            batch = rows[index:end]
+            try:
+                table.add_rows(batch)
+            except Exception:
+                return
+            index = end
+            if index < total:
+                schedule_next()
+
+        def schedule_next() -> None:
+            try:
+                from sqlit.domains.shell.app.idle_scheduler import Priority, get_idle_scheduler
+            except Exception:
+                scheduler = None
+            else:
+                scheduler = get_idle_scheduler()
+            if scheduler:
+                scheduler.request_idle_callback(
+                    add_batch,
+                    priority=Priority.NORMAL,
+                    name="results-render",
+                )
+            else:
+                self.set_timer(0.001, add_batch)
+
+        schedule_next()
+
+    def _render_results_table_incremental(
+        self: QueryMixinHost,
+        columns: list[str],
+        rows: list[tuple],
+        *,
+        escape: bool,
+        row_limit: int,
+        render_token: int,
+    ) -> None:
+        table = self._build_results_table(columns, [], escape=escape)
+        if render_token != getattr(self, "_results_render_token", 0):
+            return
+        self._replace_results_table_with_table(table)
+        self._schedule_results_render(
+            table,
+            rows,
+            row_limit=row_limit,
+            render_token=render_token,
+        )
 
     async def _display_query_results(
         self: QueryMixinHost, columns: list[str], rows: list[tuple], row_count: int, truncated: bool, elapsed_ms: float
@@ -95,13 +173,23 @@ class QueryResultsMixin:
 
         # Switch to single result mode (in case we were showing stacked results)
         self._show_single_result_mode()
-
-        render_token = getattr(self, "_results_render_token", 0) + 1
-        self._results_render_token = render_token
-        table = self._build_results_table(columns, rows, escape=True)
-        if render_token != getattr(self, "_results_render_token", 0):
-            return
-        self._replace_results_table_with_table(table)
+        self._cancel_results_render()
+        render_token = getattr(self, "_results_render_token", 0)
+        row_limit = min(len(rows), MAX_RENDER_ROWS)
+        if row_limit > RESULTS_RENDER_CHUNK_SIZE:
+            self._render_results_table_incremental(
+                columns,
+                rows,
+                escape=True,
+                row_limit=row_limit,
+                render_token=render_token,
+            )
+        else:
+            render_rows = rows[:row_limit] if row_limit else []
+            table = self._build_results_table(columns, render_rows, escape=True)
+            if render_token != getattr(self, "_results_render_token", 0):
+                return
+            self._replace_results_table_with_table(table)
 
         time_str = format_duration_ms(elapsed_ms)
         if truncated:
