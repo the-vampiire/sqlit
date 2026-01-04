@@ -15,10 +15,10 @@ SCHEMA = ConnectionSchema(
     db_type="postgresql",
     display_name="PostgreSQL",
     fields=(
-        _server_field(),
+        _server_field(required=False),
         _port_field("5432"),
         _database_field(),
-        _username_field(),
+        _username_field(required=False),
         _password_field(),
     )
     + SSH_FIELDS

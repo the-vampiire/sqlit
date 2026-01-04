@@ -48,15 +48,17 @@ class PostgreSQLAdapter(PostgresBaseAdapter):
         endpoint = config.tcp_endpoint
         if endpoint is None:
             raise ValueError("PostgreSQL connections require a TCP-style endpoint.")
-        port = int(endpoint.port or get_default_port("postgresql"))
         connect_args: dict[str, Any] = {
-            "host": endpoint.host,
-            "port": port,
-            "database": endpoint.database or "postgres",
-            "user": endpoint.username,
-            "password": endpoint.password,
             "connect_timeout": 10,
+            "database": endpoint.database or "postgres",
         }
+        if endpoint.host:
+            connect_args["host"] = endpoint.host
+            connect_args["port"] = int(endpoint.port or get_default_port("postgresql"))
+        if endpoint.username:
+            connect_args["user"] = endpoint.username
+        if endpoint.password is not None:
+            connect_args["password"] = endpoint.password
 
         tls_mode = get_tls_mode(config)
         tls_ca, tls_cert, tls_key, tls_key_password = get_tls_files(config)

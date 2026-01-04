@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from sqlit.domains.connections.domain.config import ConnectionConfig, TcpEndpoint
+from sqlit.domains.connections.providers.postgresql.schema import SCHEMA as POSTGRES_SCHEMA
 from sqlit.domains.connections.providers.mysql.schema import SCHEMA as MYSQL_SCHEMA
 from sqlit.domains.connections.providers.supabase.schema import SCHEMA as SUPABASE_SCHEMA
 from sqlit.domains.connections.providers.validation import SchemaConfigValidator
@@ -41,3 +42,19 @@ def test_schema_validator_allows_missing_required_password() -> None:
     )
 
     SchemaConfigValidator(SUPABASE_SCHEMA).validate(config)
+
+
+def test_schema_validator_allows_postgres_peer_auth() -> None:
+    config = ConnectionConfig(
+        name="local-postgres",
+        db_type="postgresql",
+        endpoint=TcpEndpoint(
+            host="",
+            port="",
+            database="postgres",
+            username="",
+            password=None,
+        ),
+    )
+
+    SchemaConfigValidator(POSTGRES_SCHEMA).validate(config)

@@ -57,12 +57,12 @@ class ConnectionSchema:
 
 # Common field templates
 
-def _server_field(placeholder: str = "localhost") -> SchemaField:
+def _server_field(placeholder: str = "localhost", required: bool = True) -> SchemaField:
     return SchemaField(
         name="server",
         label="Server",
         placeholder=placeholder,
-        required=True,
+        required=required,
         group="server_port",
     )
 

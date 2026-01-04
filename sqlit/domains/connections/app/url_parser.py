@@ -186,7 +186,13 @@ def _parse_server_based_url(
 ) -> ConnectionConfig:
     """Parse a server-based database URL (PostgreSQL, MySQL, etc.)."""
     hostname = parsed.hostname or ""
-    if not hostname:
+    schema = get_provider_schema(db_type)
+    requires_host = True
+    for field in schema.fields:
+        if field.name == "server":
+            requires_host = field.required
+            break
+    if requires_host and not hostname:
         raise ValueError(f"No host specified in URL: {original_url}")
 
     # Extract and decode credentials
