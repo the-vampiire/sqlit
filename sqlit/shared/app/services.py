@@ -152,6 +152,9 @@ class AppServices:
         if profile is None:
             return
 
+        self.runtime.process_worker = False
+        self.runtime.process_worker_warm_on_idle = False
+
         profile.query_delay = self.runtime.mock.query_delay
         profile.demo_rows = self.runtime.mock.demo_rows
         profile.demo_long_text = self.runtime.mock.demo_long_text

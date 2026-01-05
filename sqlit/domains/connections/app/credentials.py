@@ -78,27 +78,49 @@ def is_keyring_usable() -> bool:
         return _is_keyring_usable()
 
 
+_keyring_probe_error: str | None = None
+
+
+def get_keyring_probe_error() -> str | None:
+    """Return the last keyring probe error, if any."""
+    return _keyring_probe_error
+
+
 def _is_keyring_usable() -> bool:
     """Internal keyring probe (wrapped for profiling)."""
+    global _keyring_probe_error
+    _keyring_probe_error = None
+
     try:
         import keyring
     except ImportError:
+        _keyring_probe_error = "keyring module not installed"
         return False
 
-    try:
-        backend = keyring.get_keyring()
-        module_name = getattr(backend, "__module__", "") or ""
-        priority = getattr(backend, "priority", None)
-        if "keyring.backends.fail" in module_name:
-            return False
-        if isinstance(priority, (int, float)) and priority <= 0:
-            return False
+    # Retry probe to handle transient D-Bus/keyring daemon issues
+    last_exc = None
+    for attempt in range(3):
+        try:
+            backend = keyring.get_keyring()
+            module_name = getattr(backend, "__module__", "") or ""
+            priority = getattr(backend, "priority", None)
+            if "keyring.backends.fail" in module_name:
+                _keyring_probe_error = "No usable keyring backend found"
+                return False
+            if isinstance(priority, (int, float)) and priority <= 0:
+                _keyring_probe_error = "Keyring backend has low priority"
+                return False
 
-        # Minimal probe: read-only call to surface obvious misconfiguration.
-        keyring.get_password(KEYRING_SERVICE_NAME, f"probe:{secrets.token_hex(8)}")
-        return True
-    except Exception:
-        return False
+            # Minimal probe: read-only call to surface obvious misconfiguration.
+            keyring.get_password(KEYRING_SERVICE_NAME, f"probe:{secrets.token_hex(8)}")
+            return True
+        except Exception as exc:
+            last_exc = exc
+            if attempt < 2:
+                time.sleep(0.1)  # Brief delay before retry
+
+    _keyring_probe_error = f"Keyring probe failed: {last_exc}"
+    return False
 
 class CredentialsService(ABC):
     """Abstract base class for credential storage services."""
@@ -403,18 +425,23 @@ _credentials_service: CredentialsService | None = None
 
 def build_credentials_service(settings_store: Any | None = None) -> CredentialsService:
     """Build a credentials service with an optional settings store."""
-    if is_keyring_usable():
-        return KeyringCredentialsService()
-
     if settings_store is None:
         from sqlit.domains.shell.store.settings import SettingsStore
 
         settings_store = SettingsStore.get_instance()
 
     settings = settings_store.load_all()
-    allow_plaintext = bool(settings.get(ALLOW_PLAINTEXT_CREDENTIALS_SETTING))
-    if allow_plaintext:
+    allow_plaintext = settings.get(ALLOW_PLAINTEXT_CREDENTIALS_SETTING)
+
+    # If user explicitly chose plaintext, use it regardless of keyring availability
+    if allow_plaintext is True:
         return PlaintextFileCredentialsService()
+
+    # Otherwise, try keyring first
+    if is_keyring_usable():
+        return KeyringCredentialsService()
+
+    # Keyring unavailable - fall back to in-memory (not persisted)
     return PlaintextCredentialsService()
 
 

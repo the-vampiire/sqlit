@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from pathlib import Path
 
 from sqlit.domains.connections.domain.config import ConnectionConfig
 from sqlit.domains.connections.providers.adapters.base import ColumnInfo
@@ -64,12 +65,13 @@ class MockProfile:
 
 def _create_sqlite_demo_profile() -> MockProfile:
     """Create the sqlite-demo profile with pre-configured connection."""
+    demo_db_path = Path(__file__).resolve().parents[4] / "docs" / "demos" / "demo.db"
     connections = [
         ConnectionConfig.from_dict(
             {
                 "name": "Demo SQLite",
                 "db_type": "sqlite",
-                "endpoint": {"kind": "file", "path": "./docs/demos/demo.db"},
+                "endpoint": {"kind": "file", "path": str(demo_db_path)},
             }
         ),
     ]

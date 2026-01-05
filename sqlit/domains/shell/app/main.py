@@ -627,6 +627,12 @@ class SSMSTUI(
             ("General", ":q, :quit, :exit", "Quit sqlit", ""),
             ("Connection", ":connect, :c", "Open connection picker", ""),
             ("Connection", ":disconnect, :dc", "Disconnect from current server", ""),
+            (
+                "Connection",
+                ":credentials [plaintext|keyring]",
+                "Configure password storage",
+                "Use 'plaintext' to store passwords in ~/.sqlit/ (protected folder), 'keyring' to use system keyring.",
+            ),
             ("Appearance", ":theme", "Open theme selection", ""),
             ("Query", ":run, :r", "Execute query", ""),
             ("Query", ":run!, :r!", "Execute query (stay in INSERT)", ""),
@@ -890,6 +896,7 @@ class SSMSTUI(
     def on_mount(self) -> None:
         """Initialize the app."""
         run_on_mount(cast(AppProtocol, self))
+        self._apply_theme_classes()
 
     def on_unmount(self) -> None:
         """Clean up background timers when the app exits."""
@@ -920,7 +927,16 @@ class SSMSTUI(
 
     def watch_theme(self, old_theme: str, new_theme: str) -> None:
         """Save theme whenever it changes."""
+        self._apply_theme_classes()
         self._theme_manager.on_theme_changed(new_theme)
+
+    def _apply_theme_classes(self) -> None:
+        is_ansi = self.theme == "textual-ansi"
+        self.set_class(is_ansi, "theme-ansi")
+        try:
+            self.screen.set_class(is_ansi, "theme-ansi")
+        except Exception:
+            pass
 
     def watch_query_executing(self, old_value: bool, new_value: bool) -> None:
         """React to query execution status changes."""

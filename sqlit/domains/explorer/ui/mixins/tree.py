@@ -353,7 +353,10 @@ class TreeMixin(TreeSchemaMixin, TreeLabelMixin):
 
             columns: list[Any] = []
             try:
-                use_worker = bool(getattr(self.services.runtime, "process_worker", False))
+                runtime = getattr(self.services, "runtime", None)
+                use_worker = bool(getattr(runtime, "process_worker", False)) and not bool(
+                    getattr(getattr(runtime, "mock", None), "enabled", False)
+                )
                 client = None
                 if use_worker and hasattr(self, "_get_process_worker_client_async"):
                     client = await self._get_process_worker_client_async()  # type: ignore[attr-defined]

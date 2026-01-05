@@ -62,7 +62,10 @@ def load_columns_async(host: TreeMixinHost, node: Any, data: TableNode | ViewNod
 
         try:
             columns = []
-            use_worker = bool(getattr(host.services.runtime, "process_worker", False))
+            runtime = getattr(host.services, "runtime", None)
+            use_worker = bool(getattr(runtime, "process_worker", False)) and not bool(
+                getattr(getattr(runtime, "mock", None), "enabled", False)
+            )
             if use_worker and hasattr(host, "_get_process_worker_client_async"):
                 client = await host._get_process_worker_client_async()  # type: ignore[attr-defined]
             else:
@@ -96,9 +99,10 @@ def load_columns_async(host: TreeMixinHost, node: Any, data: TableNode | ViewNod
                 lambda: on_columns_loaded(host, node, db_name, schema_name, obj_name, columns),
             )
         except Exception as error:
+            error_message = f"Error loading columns: {error}"
             host.set_timer(
                 MIN_TIMER_DELAY_S,
-                lambda: on_tree_load_error(host, node, f"Error loading columns: {error}"),
+                lambda: on_tree_load_error(host, node, error_message),
             )
 
     host.run_worker(work_async(), name=f"load-columns-{obj_name}", exclusive=False)
@@ -151,7 +155,10 @@ def load_folder_async(host: TreeMixinHost, node: Any, data: FolderNode) -> None:
 
         try:
             items: list[Any] = []
-            use_worker = bool(getattr(host.services.runtime, "process_worker", False))
+            runtime = getattr(host.services, "runtime", None)
+            use_worker = bool(getattr(runtime, "process_worker", False)) and not bool(
+                getattr(getattr(runtime, "mock", None), "enabled", False)
+            )
             client = None
             if use_worker and hasattr(host, "_get_process_worker_client_async"):
                 client = await host._get_process_worker_client_async()  # type: ignore[attr-defined]
@@ -183,9 +190,10 @@ def load_folder_async(host: TreeMixinHost, node: Any, data: FolderNode) -> None:
                 lambda: on_folder_loaded(host, node, db_name, folder_type, items),
             )
         except Exception as error:
+            error_message = f"Error loading: {error}"
             host.set_timer(
                 MIN_TIMER_DELAY_S,
-                lambda: on_tree_load_error(host, node, f"Error loading: {error}"),
+                lambda: on_tree_load_error(host, node, error_message),
             )
 
     host.run_worker(work_async(), name=f"load-folder-{folder_type}", exclusive=False)

@@ -20,6 +20,8 @@ class ProcessWorkerLifecycleMixin(LifecycleHooksMixin):
         runtime = getattr(self.services, "runtime", None)
         if not runtime or not getattr(runtime, "process_worker", False):
             return False
+        if bool(getattr(getattr(runtime, "mock", None), "enabled", False)):
+            return False
         return True
 
     def _get_process_worker_client(self: QueryMixinHost) -> Any | None:
@@ -146,6 +148,8 @@ class ProcessWorkerLifecycleMixin(LifecycleHooksMixin):
         runtime = getattr(self.services, "runtime", None)
         if runtime is None or not getattr(runtime, "process_worker_warm_on_idle", False):
             return
+        if bool(getattr(getattr(runtime, "mock", None), "enabled", False)):
+            return
         from sqlit.domains.shell.app.idle_scheduler import Priority, get_idle_scheduler
 
         scheduler = get_idle_scheduler()
@@ -157,6 +161,8 @@ class ProcessWorkerLifecycleMixin(LifecycleHooksMixin):
             if not getattr(self.services.runtime, "process_worker", False):
                 return
             if not getattr(self.services.runtime, "process_worker_warm_on_idle", False):
+                return
+            if bool(getattr(getattr(self.services.runtime, "mock", None), "enabled", False)):
                 return
             self.run_worker(
                 self._get_process_worker_client_async(),

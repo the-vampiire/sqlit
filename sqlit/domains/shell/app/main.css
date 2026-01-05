@@ -184,6 +184,52 @@
         color: $text;
     }
 
+    .theme-ansi DataTable > .datatable--header {
+        background: ansi_black;
+        color: $primary;
+        text-style: bold;
+    }
+
+    .theme-ansi DataTable > .datatable--fixed {
+        background: ansi_black;
+        color: $primary;
+        text-style: bold;
+    }
+
+    .theme-ansi DataTable:focus > .datatable--header {
+        background: ansi_black;
+        color: $primary;
+        text-style: bold;
+    }
+
+    .theme-ansi DataTable:dark > .datatable--even-row {
+        background: ansi_bright_black 15%;
+    }
+
+    .theme-ansi DataTable:dark > .datatable--odd-row {
+        background: transparent;
+    }
+
+    .theme-ansi DataTable > .datatable--cursor {
+        background: ansi_blue 18%;
+        color: $text;
+    }
+
+    .theme-ansi DataTable > .datatable--selectrange {
+        background: ansi_blue 8%;
+        color: $text;
+    }
+
+    .theme-ansi DataTable > .datatable--fixed-cursor {
+        background: ansi_blue 12%;
+        color: $text;
+    }
+
+    .theme-ansi DataTable > .datatable--header-cursor {
+        background: ansi_blue 12%;
+        color: $text;
+    }
+
     /* FastDataTable already has zebra stripes with $primary 10% */
 
     #status-bar {

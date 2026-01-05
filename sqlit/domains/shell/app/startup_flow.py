@@ -59,6 +59,9 @@ def run_on_mount(app: AppProtocol) -> None:
     app._startup_stamp("settings_applied")
 
     apply_mock_settings(app, settings)
+    if app.services.runtime.mock.enabled:
+        app.services.runtime.process_worker = False
+        app.services.runtime.process_worker_warm_on_idle = False
 
     app.connections = app.services.connection_store.load_all(load_credentials=False)
     if app._startup_connection:
@@ -81,9 +84,11 @@ def run_on_mount(app: AppProtocol) -> None:
     app._update_footer_bindings()
     app._startup_stamp("footer_updated")
     _warn_on_missing_actions(app, is_headless)
+    _warn_on_keyring_error(app, is_headless)
     if (
         app.services.runtime.process_worker
         and app.services.runtime.process_worker_warm_on_idle
+        and not app.services.runtime.mock.enabled
         and hasattr(app, "_schedule_process_worker_warm")
     ):
         try:
@@ -118,6 +123,22 @@ def _warn_on_missing_actions(app: AppProtocol, is_headless: bool) -> None:
         return
     try:
         app.notify(message, severity="warning")
+    except Exception:
+        print(f"[sqlit] {message}", file=sys.stderr)
+
+
+def _warn_on_keyring_error(app: AppProtocol, is_headless: bool) -> None:
+    from sqlit.domains.connections.app.credentials import get_keyring_probe_error
+
+    error = get_keyring_probe_error()
+    if not error:
+        return
+    message = f"Keyring unavailable: {error}. Saved passwords may not load. If this persists, see :commands for guidance."
+    if is_headless:
+        print(f"[sqlit] {message}", file=sys.stderr)
+        return
+    try:
+        app.notify(message, severity="warning", timeout=15)
     except Exception:
         print(f"[sqlit] {message}", file=sys.stderr)
 
