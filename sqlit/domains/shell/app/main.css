@@ -106,6 +106,7 @@
     #query-input {
         height: 1fr;
         border: none;
+        background: $surface;
     }
 
     #results-area {
