@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import asyncio
+import shlex
+
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.screen import ModalScreen
@@ -93,6 +96,58 @@ class InstallProgressScreen(ModalScreen[bool]):
     def on_mount(self) -> None:
         self.run_worker(self._run_install(), exclusive=True)
 
+    def _requires_sudo(self) -> bool:
+        try:
+            parts = shlex.split(self.command)
+        except ValueError:
+            return False
+        if not parts:
+            return False
+        first = parts[0]
+        return first in {"sudo", "pacman", "yay"}
+
+    async def _ensure_sudo(self) -> bool:
+        process = await asyncio.create_subprocess_shell(
+            "sudo -n true",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        await process.communicate()
+        return process.returncode == 0
+
+    async def _stream_lines(self, stdout: object):
+        """Yield decoded output lines, handling carriage-return updates."""
+        if hasattr(stdout, "read"):
+            buffer = ""
+            while True:
+                chunk = await stdout.read(1024)
+                if not chunk:
+                    break
+                if isinstance(chunk, str):
+                    text = chunk
+                else:
+                    text = chunk.decode("utf-8", errors="replace")
+                text = text.replace("\r\n", "\n").replace("\r", "\n")
+                buffer += text
+                while "\n" in buffer:
+                    line, buffer = buffer.split("\n", 1)
+                    yield line
+            if buffer:
+                yield buffer
+            return
+
+        async for chunk in stdout:
+            if isinstance(chunk, str):
+                text = chunk
+            else:
+                text = chunk.decode("utf-8", errors="replace")
+            text = text.replace("\r\n", "\n").replace("\r", "\n")
+            lines = text.split("\n")
+            last_index = len(lines) - 1
+            for idx, line in enumerate(lines):
+                if line or idx < last_index:
+                    yield line
+
     async def _run_install(self) -> None:
         """Run the install command and stream output."""
         log = self.query_one("#install-output", RichLog)
@@ -106,15 +161,27 @@ class InstallProgressScreen(ModalScreen[bool]):
             if runner is None:
                 runner = AsyncSubprocessRunner()
 
+            if self._requires_sudo():
+                ok = await self._ensure_sudo()
+                if not ok:
+                    self._completed = True
+                    self._process = None
+                    log.write("[yellow]Sudo authentication required.[/]")
+                    log.write("Run [bold]sudo -v[/] in a terminal, then retry.")
+                    status.update("[bold]Authentication required[/]")
+                    status.remove_class("running")
+                    status.add_class("error")
+                    self._update_dialog_shortcuts([("OK", "enter")])
+                    return
+
             self._process = await runner.spawn(self.command)
             process = self._process
             if process is None:
                 raise RuntimeError("Install process failed to start.")
 
             if process.stdout:
-                async for line in process.stdout:
-                    decoded = line.decode("utf-8", errors="replace").rstrip()
-                    log.write(decoded)
+                async for line in self._stream_lines(process.stdout):
+                    log.write(line)
 
             await process.wait()
             return_code = process.returncode
