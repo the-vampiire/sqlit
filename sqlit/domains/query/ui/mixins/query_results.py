@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from decimal import Decimal
 from typing import Any
 
 from sqlit.shared.core.utils import format_duration_ms
@@ -49,6 +50,7 @@ class QueryResultsMixin:
         rows: list[tuple],
         *,
         escape: bool,
+        backend: Any | None = None,
     ) -> SqlitDataTable:
         """Build a new results table without converting to Arrow."""
         self._results_table_counter += 1
@@ -57,8 +59,19 @@ class QueryResultsMixin:
         if not columns:
             return SqlitDataTable(id=new_id, zebra_stripes=True, show_header=False)
 
-        render_rows = rows[:MAX_RENDER_ROWS] if rows else []
         render_markup = not escape
+        if backend is not None:
+            return SqlitDataTable(
+                id=new_id,
+                zebra_stripes=True,
+                backend=backend,
+                column_labels=columns,
+                max_column_content_width=MAX_COLUMN_CONTENT_WIDTH,
+                render_markup=render_markup,
+                null_rep="NULL",
+            )
+
+        render_rows = rows[:MAX_RENDER_ROWS] if rows else []
         return SqlitDataTable(
             id=new_id,
             zebra_stripes=True,
@@ -68,6 +81,41 @@ class QueryResultsMixin:
             render_markup=render_markup,
             null_rep="NULL",
         )
+
+    def _get_decimal_column_types(self: QueryMixinHost, rows: list[tuple]) -> dict[int, Any]:
+        from decimal import Decimal
+
+        max_precision: dict[int, int] = {}
+        max_scale: dict[int, int] = {}
+
+        for row in rows:
+            for idx, value in enumerate(row):
+                if isinstance(value, Decimal):
+                    digits = len(value.as_tuple().digits)
+                    exponent = value.as_tuple().exponent
+                    scale = -exponent if exponent < 0 else 0
+                    precision = digits + (exponent if exponent > 0 else 0)
+                    if precision < 1:
+                        precision = 1
+                    max_precision[idx] = max(max_precision.get(idx, 0), precision)
+                    max_scale[idx] = max(max_scale.get(idx, 0), scale)
+
+        if not max_precision:
+            return {}
+
+        import pyarrow as pa
+
+        types: dict[int, Any] = {}
+        for idx, precision in max_precision.items():
+            scale = max_scale.get(idx, 0)
+            if precision < scale:
+                precision = scale
+            if precision > 38:
+                types[idx] = pa.decimal256(precision, scale)
+            else:
+                types[idx] = pa.decimal128(precision, scale)
+
+        return types
 
     def _replace_results_table_with_table(self: QueryMixinHost, table: SqlitDataTable) -> None:
         """Replace the results table with a prebuilt table."""
@@ -99,8 +147,10 @@ class QueryResultsMixin:
     def _schedule_results_render(
         self: QueryMixinHost,
         table: SqlitDataTable,
+        columns: list[str],
         rows: list[tuple],
         *,
+        escape: bool,
         start_index: int,
         row_limit: int,
         render_token: int,
@@ -123,7 +173,14 @@ class QueryResultsMixin:
             batch = rows[index:end]
             try:
                 table.add_rows(batch)
-            except Exception:
+            except Exception as exc:
+                # Fall back to full render if incremental append fails (e.g., Arrow schema mismatch).
+                try:
+                    self.log.error(f"Results incremental render failed; falling back to full render: {exc}")
+                except Exception:
+                    pass
+                if render_token == getattr(self, "_results_render_token", 0):
+                    self._replace_results_table_with_data(columns, rows, escape=escape)
                 return
             index = end
             if index < total:
@@ -158,13 +215,37 @@ class QueryResultsMixin:
     ) -> None:
         initial_count = min(RESULTS_RENDER_INITIAL_ROWS, row_limit)
         initial_rows = rows[:initial_count] if initial_count > 0 else []
-        table = self._build_results_table(columns, initial_rows, escape=escape)
+        has_decimal_in_initial = any(
+            isinstance(value, Decimal) for row in initial_rows for value in row
+        )
+        if has_decimal_in_initial:
+            decimal_types = self._get_decimal_column_types(rows)
+            if decimal_types:
+                from textual_fastdatatable.backend import ArrowBackend
+                import pyarrow as pa
+
+                arrays = []
+                for idx, _name in enumerate(columns):
+                    values = [row[idx] for row in initial_rows] if initial_rows else []
+                    col_type = decimal_types.get(idx)
+                    if col_type is not None:
+                        arrays.append(pa.array(values, type=col_type))
+                    else:
+                        arrays.append(pa.array(values))
+                table_backend = ArrowBackend(pa.Table.from_arrays(arrays, names=columns))
+                table = self._build_results_table(columns, initial_rows, escape=escape, backend=table_backend)
+            else:
+                table = self._build_results_table(columns, initial_rows, escape=escape)
+        else:
+            table = self._build_results_table(columns, initial_rows, escape=escape)
         if render_token != getattr(self, "_results_render_token", 0):
             return
         self._replace_results_table_with_table(table)
         self._schedule_results_render(
             table,
+            columns,
             rows,
+            escape=escape,
             start_index=initial_count,
             row_limit=row_limit,
             render_token=render_token,
