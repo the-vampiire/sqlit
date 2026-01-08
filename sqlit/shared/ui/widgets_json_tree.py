@@ -61,7 +61,7 @@ class JSONTreeView(Tree[Any]):
         """Recursively add JSON data to tree nodes."""
         if isinstance(data, dict):
             if key is not None:
-                label = Text.assemble(Text(f"{{}} ", style="bold cyan"), Text(key))
+                label = Text.assemble(Text("{} ", style="bold cyan"), Text(key))
                 child = node.add(label, data=data)
             else:
                 child = node
@@ -70,7 +70,7 @@ class JSONTreeView(Tree[Any]):
         elif isinstance(data, list):
             if key is not None:
                 label = Text.assemble(
-                    Text(f"[] ", style="bold magenta"),
+                    Text("[] ", style="bold magenta"),
                     Text(key),
                     Text(f" ({len(data)})", style="dim"),
                 )

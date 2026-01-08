@@ -3,12 +3,11 @@
 from __future__ import annotations
 
 import json
-from typing import Any
 
 from rich.syntax import Syntax
 from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.containers import Container, VerticalScroll
+from textual.containers import VerticalScroll
 from textual.screen import ModalScreen
 from textual.widgets import Static
 
