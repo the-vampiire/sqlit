@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import ast
 import json
+from dataclasses import dataclass
 from typing import Any
 
 from rich.highlighter import ReprHighlighter
@@ -38,7 +39,15 @@ def parse_json_value(value: str) -> tuple[bool, dict | list | None]:
     return False, None
 
 
-class JSONTreeView(Tree[Any]):
+@dataclass
+class JSONNodeData:
+    """Data stored in each tree node."""
+
+    key: str | None  # The key/index for this node (None for root)
+    value: Any  # The actual value at this node
+
+
+class JSONTreeView(Tree[JSONNodeData]):
     """Interactive JSON tree viewer with expand/collapse support."""
 
     DEFAULT_CSS = """
@@ -46,14 +55,22 @@ class JSONTreeView(Tree[Any]):
         height: 1fr;
         background: $surface;
     }
-    
+
     JSONTreeView > .tree--guides {
         color: $text-muted;
     }
-    
+
     JSONTreeView > .tree--cursor {
         background: $accent;
         color: $text;
+    }
+
+    JSONTreeView.flash-cursor > .tree--cursor {
+        background: $success 30%;
+    }
+
+    JSONTreeView.flash-all {
+        background: $success 20%;
     }
     """
 
@@ -81,15 +98,16 @@ class JSONTreeView(Tree[Any]):
 
         self.clear()
         self.root.set_label(Text(f"{{}} {label}" if isinstance(data, dict) else f"[] {label}"))
+        self.root.data = JSONNodeData(key=None, value=data)
         self._add_json_node(self.root, data)
         self.root.expand()
 
-    def _add_json_node(self, node: TreeNode[Any], data: Any, key: str | None = None) -> None:
+    def _add_json_node(self, node: TreeNode[JSONNodeData], data: Any, key: str | None = None) -> None:
         """Recursively add JSON data to tree nodes."""
         if isinstance(data, dict):
             if key is not None:
                 label = Text.assemble(Text("{} ", style="bold cyan"), Text(key))
-                child = node.add(label, data=data)
+                child = node.add(label, data=JSONNodeData(key=key, value=data))
             else:
                 child = node
             for k, v in data.items():
@@ -101,7 +119,7 @@ class JSONTreeView(Tree[Any]):
                     Text(key),
                     Text(f" ({len(data)})", style="dim"),
                 )
-                child = node.add(label, data=data)
+                child = node.add(label, data=JSONNodeData(key=key, value=data))
             else:
                 child = node
             for i, v in enumerate(data):
@@ -114,10 +132,10 @@ class JSONTreeView(Tree[Any]):
                     Text(": ", style="dim"),
                     value_text,
                 )
-                leaf = node.add_leaf(label, data=data)
+                leaf = node.add_leaf(label, data=JSONNodeData(key=key, value=data))
                 leaf.allow_expand = False
             else:
-                node.add_leaf(self._format_value(data), data=data)
+                node.add_leaf(self._format_value(data), data=JSONNodeData(key=None, value=data))
 
     def _format_value(self, value: Any) -> Text:
         """Format a leaf value with syntax highlighting."""
@@ -139,7 +157,7 @@ class JSONTreeView(Tree[Any]):
     def action_expand_all(self) -> None:
         """Expand all nodes in the tree."""
 
-        def expand_recursive(node: TreeNode[Any]) -> None:
+        def expand_recursive(node: TreeNode[JSONNodeData]) -> None:
             node.expand()
             for child in node.children:
                 expand_recursive(child)
@@ -149,7 +167,7 @@ class JSONTreeView(Tree[Any]):
     def action_collapse_all(self) -> None:
         """Collapse all nodes except root."""
 
-        def collapse_recursive(node: TreeNode[Any]) -> None:
+        def collapse_recursive(node: TreeNode[JSONNodeData]) -> None:
             for child in node.children:
                 collapse_recursive(child)
                 child.collapse()
@@ -161,3 +179,41 @@ class JSONTreeView(Tree[Any]):
     def raw_json(self) -> str:
         """Get the raw JSON string for copying."""
         return self._raw_json
+
+    def get_cursor_key(self) -> str | None:
+        """Get the key of the currently selected node."""
+        node = self.cursor_node
+        if node is None or node.data is None:
+            return None
+        return node.data.key
+
+    def get_cursor_value(self) -> Any:
+        """Get the value of the currently selected node."""
+        node = self.cursor_node
+        if node is None or node.data is None:
+            return None
+        return node.data.value
+
+    def get_cursor_value_json(self) -> str:
+        """Get the value of the currently selected node as JSON string."""
+        value = self.get_cursor_value()
+        if value is None:
+            return "null"
+        return json.dumps(value, indent=2, ensure_ascii=False)
+
+    def get_cursor_field_json(self) -> str | None:
+        """Get the current field as 'key': value JSON string."""
+        node = self.cursor_node
+        if node is None or node.data is None:
+            return None
+        key = node.data.key
+        value = node.data.value
+        if key is None:
+            # Root node - just return the value
+            return json.dumps(value, indent=2, ensure_ascii=False)
+        # Check if key is an array index like [0]
+        if key.startswith("[") and key.endswith("]"):
+            # Array element - just return the value
+            return json.dumps(value, indent=2, ensure_ascii=False)
+        # Object field - return as "key": value
+        return f'"{key}": {json.dumps(value, ensure_ascii=False)}'

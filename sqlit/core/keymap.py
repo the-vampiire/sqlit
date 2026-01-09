@@ -285,6 +285,10 @@ class DefaultKeymapProvider(KeymapProvider):
             # rye results export menu
             LeaderCommandDef("c", "csv", "Export as CSV", "Export", menu="rye"),
             LeaderCommandDef("j", "json", "Export as JSON", "Export", menu="rye"),
+            # vy value view yank menu (tree mode)
+            LeaderCommandDef("y", "value", "Copy value", "Copy", menu="vy"),
+            LeaderCommandDef("f", "field", "Copy field", "Copy", menu="vy"),
+            LeaderCommandDef("a", "all", "Copy all", "Copy", menu="vy"),
         ]
 
     def _build_action_keys(self) -> list[ActionKeyDef]:

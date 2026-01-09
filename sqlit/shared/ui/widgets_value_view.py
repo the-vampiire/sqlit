@@ -153,3 +153,32 @@ class InlineValueView(Container):
     def value(self) -> str:
         """Get the current raw value (for copying)."""
         return self._raw_value
+
+    def get_cursor_value_json(self) -> str | None:
+        """Get the current tree node's value as JSON string."""
+        if not self._is_json or not self._tree_mode:
+            return None
+        try:
+            tree = self.query_one("#json-tree", JSONTreeView)
+            return tree.get_cursor_value_json()
+        except Exception:
+            return None
+
+    def get_cursor_field_json(self) -> str | None:
+        """Get the current tree node as 'key': value JSON string."""
+        if not self._is_json or not self._tree_mode:
+            return None
+        try:
+            tree = self.query_one("#json-tree", JSONTreeView)
+            return tree.get_cursor_field_json()
+        except Exception:
+            return None
+
+    def get_tree_widget(self) -> JSONTreeView | None:
+        """Get the JSON tree widget for flashing."""
+        if not self._is_json or not self._tree_mode:
+            return None
+        try:
+            return self.query_one("#json-tree", JSONTreeView)
+        except Exception:
+            return None

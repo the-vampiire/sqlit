@@ -214,14 +214,73 @@ class ResultsMixin:
             pass
 
     def action_copy_value_view(self: ResultsMixinHost) -> None:
-        """Copy the value from the inline value view."""
+        """Copy the value from the inline value view.
+
+        In tree mode with JSON, opens the vy yank menu.
+        In syntax mode, copies the full value directly.
+        """
         from sqlit.shared.ui.widgets import InlineValueView, flash_widget
 
         try:
             value_view = self.query_one("#value-view", InlineValueView)
+            if not value_view.is_visible:
+                return
+            # In tree mode with JSON, open the yank menu
+            if value_view._is_json and value_view._tree_mode:
+                self._start_leader_pending("vy")
+                return
+            # In syntax mode, copy directly
+            self._copy_text(value_view.value)
+            flash_widget(value_view)
+        except Exception:
+            pass
+
+    def action_vy_value(self: ResultsMixinHost) -> None:
+        """Copy the current node's value (from yank menu)."""
+        from sqlit.shared.ui.widgets import InlineValueView, flash_widget
+
+        self._clear_leader_pending()
+        try:
+            value_view = self.query_one("#value-view", InlineValueView)
+            if value_view.is_visible:
+                text = value_view.get_cursor_value_json()
+                if text:
+                    self._copy_text(text)
+                    tree = value_view.get_tree_widget()
+                    if tree:
+                        flash_widget(tree, "flash-cursor")
+        except Exception:
+            pass
+
+    def action_vy_field(self: ResultsMixinHost) -> None:
+        """Copy the current field as 'key': value (from yank menu)."""
+        from sqlit.shared.ui.widgets import InlineValueView, flash_widget
+
+        self._clear_leader_pending()
+        try:
+            value_view = self.query_one("#value-view", InlineValueView)
+            if value_view.is_visible:
+                text = value_view.get_cursor_field_json()
+                if text:
+                    self._copy_text(text)
+                    tree = value_view.get_tree_widget()
+                    if tree:
+                        flash_widget(tree, "flash-cursor")
+        except Exception:
+            pass
+
+    def action_vy_all(self: ResultsMixinHost) -> None:
+        """Copy the full JSON (from yank menu)."""
+        from sqlit.shared.ui.widgets import InlineValueView, flash_widget
+
+        self._clear_leader_pending()
+        try:
+            value_view = self.query_one("#value-view", InlineValueView)
             if value_view.is_visible:
                 self._copy_text(value_view.value)
-                flash_widget(value_view)
+                tree = value_view.get_tree_widget()
+                if tree:
+                    flash_widget(tree, "flash-all")
         except Exception:
             pass
 
