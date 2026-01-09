@@ -256,6 +256,19 @@ class SSMSTUI(
         # Compute modal_open dynamically from screen stack for accurate state
         modal_open = any(isinstance(screen, ModalScreen) for screen in self.screen_stack)
 
+        # Get value view state for tree/syntax mode
+        value_view_tree_mode = False
+        value_view_is_json = False
+        if self._value_view_active:
+            try:
+                from sqlit.shared.ui.widgets import InlineValueView
+
+                value_view = self.query_one("#value-view", InlineValueView)
+                value_view_tree_mode = value_view._tree_mode
+                value_view_is_json = value_view._is_json
+            except Exception:
+                pass
+
         return InputContext(
             focus=self._get_focus_pane(),
             vim_mode=self.vim_mode,
@@ -265,6 +278,8 @@ class SSMSTUI(
             autocomplete_visible=self._autocomplete_visible,
             results_filter_active=getattr(self, "_results_filter_visible", False),
             value_view_active=self._value_view_active,
+            value_view_tree_mode=value_view_tree_mode,
+            value_view_is_json=value_view_is_json,
             query_executing=self.query_executing,
             modal_open=modal_open,
             has_connection=self.current_connection is not None,

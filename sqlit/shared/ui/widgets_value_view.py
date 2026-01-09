@@ -3,18 +3,14 @@
 from __future__ import annotations
 
 import json
-from typing import TYPE_CHECKING, Any, cast
+from typing import Any
 
 from rich.syntax import Syntax
 from textual.app import ComposeResult
 from textual.containers import Container, VerticalScroll
-from textual.events import Key
 from textual.widgets import Static
 
-from sqlit.shared.ui.widgets_json_tree import JSONTreeView
-
-if TYPE_CHECKING:
-    from sqlit.shared.ui.protocols import UINavigationProtocol
+from sqlit.shared.ui.widgets_json_tree import JSONTreeView, parse_json_value
 
 
 class InlineValueView(Container):
@@ -35,7 +31,7 @@ class InlineValueView(Container):
         height: 1fr;
         padding: 1;
     }
-    
+
     InlineValueView #syntax-scroll.hidden {
         display: none;
     }
@@ -49,17 +45,9 @@ class InlineValueView(Container):
         height: 1fr;
         padding: 0 1;
     }
-    
+
     InlineValueView #json-tree.hidden {
         display: none;
-    }
-    
-    InlineValueView #view-mode-hint {
-        dock: bottom;
-        height: 1;
-        background: $surface-darken-1;
-        color: $text-muted;
-        padding: 0 1;
     }
     """
 
@@ -73,90 +61,30 @@ class InlineValueView(Container):
         self._tree_mode: bool = True
         self._parsed_json: dict | list | None = None
 
-    def on_key(self, event: Key) -> None:
-        """Handle key events when value view is visible."""
-        if not self.is_visible:
-            return
-
-        key = event.key
-        app = cast("UINavigationProtocol", self.app)
-
-        if key in ("escape", "q"):
-            app.action_close_value_view()
-            event.prevent_default()
-            event.stop()
-            return
-
-        if key == "y":
-            app.action_copy_value_view()
-            event.prevent_default()
-            event.stop()
-            return
-
-        if key == "t" and self._is_json:
-            self._toggle_view_mode()
-            event.prevent_default()
-            event.stop()
-            return
-
-        if key in ("E", "e") and self._is_json and self._tree_mode:
-            try:
-                self.query_one("#json-tree", JSONTreeView).action_expand_all()
-            except Exception:
-                pass
-            event.prevent_default()
-            event.stop()
-            return
-
-        if key == "Z" and self._is_json and self._tree_mode:
-            try:
-                self.query_one("#json-tree", JSONTreeView).action_collapse_all()
-            except Exception:
-                pass
-            event.prevent_default()
-            event.stop()
-            return
-
     def compose(self) -> ComposeResult:
         with VerticalScroll(id="syntax-scroll", classes="hidden"):
             yield Static("", id="value-content", markup=False)
         yield JSONTreeView("JSON", id="json-tree", classes="hidden")
-        yield Static("", id="view-mode-hint")
 
     def set_value(self, value: str, column_name: str = "") -> None:
         """Set the value to display."""
         self._raw_value = value
         self._column_name = column_name
-        self._detect_json()
+        self._is_json, self._parsed_json = parse_json_value(value)
         self._rebuild()
 
-    def _detect_json(self) -> None:
-        """Check if the value is valid JSON."""
-        import ast
-
-        stripped = self._raw_value.strip()
-        self._is_json = False
-        self._parsed_json = None
-
-        if stripped and stripped[0] in "{[":
-            try:
-                self._parsed_json = json.loads(stripped)
-                self._is_json = True
-                return
-            except (json.JSONDecodeError, ValueError):
-                pass
-            try:
-                parsed = ast.literal_eval(stripped)
-                if isinstance(parsed, dict | list):
-                    self._parsed_json = parsed
-                    self._is_json = True
-            except (ValueError, SyntaxError):
-                pass
-
-    def _toggle_view_mode(self) -> None:
+    def toggle_view_mode(self) -> None:
         """Toggle between tree and syntax view."""
         self._tree_mode = not self._tree_mode
         self._rebuild()
+
+    def collapse_all_nodes(self) -> None:
+        """Collapse all tree nodes."""
+        if self._is_json and self._tree_mode:
+            try:
+                self.query_one("#json-tree", JSONTreeView).action_collapse_all()
+            except Exception:
+                pass
 
     def _rebuild(self) -> None:
         """Rebuild the display based on current mode."""
@@ -164,7 +92,6 @@ class InlineValueView(Container):
             scroll_widget = self.query_one("#syntax-scroll", VerticalScroll)
             static_widget = self.query_one("#value-content", Static)
             tree_widget = self.query_one("#json-tree", JSONTreeView)
-            hint_widget = self.query_one("#view-mode-hint", Static)
 
             if self._is_json and self._tree_mode and self._parsed_json is not None:
                 scroll_widget.add_class("hidden")
@@ -173,8 +100,6 @@ class InlineValueView(Container):
                 label = self._column_name or "JSON"
                 tree_widget.set_json(self._parsed_json, label)
                 tree_widget.focus()
-
-                hint_widget.update("Syntax: [bold]t[/]  Expand: [bold]E[/]  Collapse: [bold]Z[/]")
             else:
                 tree_widget.add_class("hidden")
                 scroll_widget.remove_class("hidden")
@@ -183,11 +108,6 @@ class InlineValueView(Container):
                 static_widget.update(formatted)
                 scroll_widget.scroll_home(animate=False)
                 scroll_widget.focus()
-
-                if self._is_json:
-                    hint_widget.update("Tree: [bold]t[/]")
-                else:
-                    hint_widget.update("")
         except Exception:
             pass
 

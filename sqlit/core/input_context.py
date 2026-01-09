@@ -19,6 +19,8 @@ class InputContext:
     autocomplete_visible: bool
     results_filter_active: bool
     value_view_active: bool
+    value_view_tree_mode: bool
+    value_view_is_json: bool
     query_executing: bool
     modal_open: bool
     has_connection: bool

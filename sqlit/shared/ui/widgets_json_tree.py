@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ast
 import json
 from typing import Any
 
@@ -9,6 +10,32 @@ from rich.highlighter import ReprHighlighter
 from rich.text import Text
 from textual.widgets import Tree
 from textual.widgets.tree import TreeNode
+
+
+def parse_json_value(value: str) -> tuple[bool, dict | list | None]:
+    """Parse a string as JSON and return (is_json, parsed_value).
+
+    Tries standard JSON parsing first, then falls back to Python literal_eval
+    for Python-style dicts/lists.
+    """
+    stripped = value.strip()
+    if not stripped or stripped[0] not in "{[":
+        return False, None
+
+    try:
+        parsed = json.loads(stripped)
+        return True, parsed
+    except (json.JSONDecodeError, ValueError):
+        pass
+
+    try:
+        parsed = ast.literal_eval(stripped)
+        if isinstance(parsed, dict | list):
+            return True, parsed
+    except (ValueError, SyntaxError):
+        pass
+
+    return False, None
 
 
 class JSONTreeView(Tree[Any]):

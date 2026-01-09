@@ -39,6 +39,8 @@ from sqlit.domains.results.state import (
     ResultsFilterActiveState,
     ResultsFocusedState,
     ValueViewActiveState,
+    ValueViewSyntaxModeState,
+    ValueViewTreeModeState,
 )
 from sqlit.domains.shell.state.leader_pending import LeaderPendingState
 from sqlit.domains.shell.state.main_screen import MainScreenState
@@ -74,6 +76,8 @@ class UIStateMachine:
         self.results_focused = ResultsFocusedState(parent=self.main_screen)
         self.results_filter_active = ResultsFilterActiveState(parent=self.main_screen)
         self.value_view_active = ValueViewActiveState(parent=self.main_screen)
+        self.value_view_tree_mode = ValueViewTreeModeState(parent=self.value_view_active)
+        self.value_view_syntax_mode = ValueViewSyntaxModeState(parent=self.value_view_active)
 
         self._states = [
             self.modal_active,
@@ -90,6 +94,8 @@ class UIStateMachine:
             self.query_normal,
             self.query_focused,
             self.results_filter_active,  # Before results_focused (more specific when filter active)
+            self.value_view_tree_mode,  # Before value_view_active (more specific in tree mode)
+            self.value_view_syntax_mode,  # Before value_view_active (more specific in syntax mode)
             self.value_view_active,  # Before results_focused (more specific when viewing cell)
             self.results_focused,
             self.main_screen,

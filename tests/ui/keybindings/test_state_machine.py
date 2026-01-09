@@ -18,6 +18,8 @@ def make_context(**overrides: object) -> InputContext:
         "autocomplete_visible": False,
         "results_filter_active": False,
         "value_view_active": False,
+        "value_view_tree_mode": False,
+        "value_view_is_json": False,
         "query_executing": False,
         "modal_open": False,
         "has_connection": False,
