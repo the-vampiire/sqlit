@@ -93,4 +93,4 @@ class ValueViewSyntaxModeState(State):
         return left, []
 
     def is_active(self, app: InputContext) -> bool:
-        return app.value_view_active and not app.value_view_tree_mode
+        return app.value_view_active and app.value_view_is_json and not app.value_view_tree_mode
