@@ -504,6 +504,11 @@ def populate_connected_tree(host: TreeMixinHost) -> None:
                 dbs_node.data = FolderNode(folder_type="databases")
                 dbs_node.allow_expand = True
                 active_node.expand()
+                # Trigger async load of databases so they're visible after refresh
+                from . import loaders
+                loaders.add_loading_placeholder(host, dbs_node)
+                loaders.load_folder_async(host, dbs_node, dbs_node.data)
+                dbs_node.expand()
         else:
             add_database_object_nodes(host, active_node, None)
             active_node.expand()

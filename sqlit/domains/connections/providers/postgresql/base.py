@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Any
+from dataclasses import replace
+from typing import TYPE_CHECKING, Any
 
 from sqlit.domains.connections.providers.adapters.base import (
     ColumnInfo,
@@ -12,6 +13,9 @@ from sqlit.domains.connections.providers.adapters.base import (
     TableInfo,
     TriggerInfo,
 )
+
+if TYPE_CHECKING:
+    from sqlit.domains.connections.domain.config import ConnectionConfig
 
 
 class PostgresBaseAdapter(CursorBasedAdapter):
@@ -40,6 +44,19 @@ class PostgresBaseAdapter(CursorBasedAdapter):
     @property
     def default_schema(self) -> str:
         return "public"
+
+    def apply_database_override(self, config: ConnectionConfig, database: str) -> ConnectionConfig:
+        """Apply database override by modifying the connection config.
+
+        PostgreSQL databases are isolated and don't support cross-database queries.
+        To query a table in another database, we must connect to that database.
+        This returns a new config with the target database set.
+        """
+        endpoint = config.tcp_endpoint
+        if endpoint is None:
+            return config
+        new_endpoint = replace(endpoint, database=database)
+        return replace(config, endpoint=new_endpoint)
 
     def get_tables(self, conn: Any, database: str | None = None) -> list[TableInfo]:
         """Get list of tables from all schemas."""

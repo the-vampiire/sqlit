@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from unittest.mock import MagicMock
 
 import pytest
-from textual.widgets import Input
+from textual.widgets import Button, Input
 
 from sqlit.domains.connections.providers.model import SchemaCapabilities
 from sqlit.domains.connections.providers.explorer_nodes import DefaultExplorerNodeProvider
@@ -57,10 +57,11 @@ class TestPasswordInputScreen:
             app.push_screen(screen)
             await pilot.pause()
 
-            # Check that the input field exists (password visible for usability)
+            # Check that the input field exists and is masked by default
             input_widget = screen.query_one("#password-input", Input)
             assert input_widget is not None
-            assert input_widget.password is False
+            assert input_widget.password is True
+            assert screen.query_one("#password-toggle", Button) is not None
 
     @pytest.mark.asyncio
     async def test_password_input_submit_with_enter(self) -> None:
@@ -186,8 +187,8 @@ class TestPasswordInputScreen:
             assert "custom password" in str(description.render())
 
     @pytest.mark.asyncio
-    async def test_password_visible_in_input(self) -> None:
-        """Password characters are visible when typing for usability."""
+    async def test_password_toggle_visibility(self) -> None:
+        """Password visibility can be toggled."""
         from textual.app import App
 
         class TestApp(App):
@@ -203,8 +204,19 @@ class TestPasswordInputScreen:
             input_widget.value = "secret123"
             await pilot.pause()
 
-            # Password is visible for better usability in terminal apps
+            # Password is masked by default
+            assert input_widget.password is True
+
+            toggle = screen.query_one("#password-toggle", Button)
+            toggle.press()
+            await pilot.pause()
             assert input_widget.password is False
+            assert str(toggle.label) == "Hide"
+
+            toggle.press()
+            await pilot.pause()
+            assert input_widget.password is True
+            assert str(toggle.label) == "Show"
 
 
 class TestConnectionPasswordFlow:

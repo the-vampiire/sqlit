@@ -519,6 +519,14 @@ class ConnectionScreen(ModalScreen):
         if event.button.id and event.button.id.startswith("browse-"):
             field_name = event.button.id[7:]  # Remove "browse-" prefix
             self._on_browse_file(field_name)
+            return
+        if event.button.id and event.button.id.startswith("toggle-password-"):
+            field_name = event.button.id[len("toggle-password-") :]
+            widget = self._form.field_widgets.get(field_name)
+            if isinstance(widget, Input):
+                widget.password = not widget.password
+                event.button.label = "Hide" if not widget.password else "Show"
+                widget.focus()
 
     def _update_field_visibility(self) -> None:
         self._form.update_field_visibility(self._get_field_container)

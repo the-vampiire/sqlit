@@ -8,6 +8,7 @@ from textual.containers import Container
 from textual.widgets import Button, Input, OptionList, Select, TabbedContent
 
 from sqlit.domains.connections.ui.connection_form import ConnectionFormController
+from sqlit.domains.connections.providers.schema_helpers import FieldType
 from sqlit.domains.connections.ui.fields import FieldDefinition
 
 
@@ -48,6 +49,12 @@ class ConnectionFocusController:
                         try:
                             browse_btn = self._screen.query_one(f"#browse-{name}", Button)
                             collected.append(browse_btn)
+                        except Exception:
+                            pass
+                    if field_def.field_type == FieldType.PASSWORD:
+                        try:
+                            toggle_btn = self._screen.query_one(f"#toggle-password-{name}", Button)
+                            collected.append(toggle_btn)
                         except Exception:
                             pass
                 except Exception:

@@ -70,6 +70,27 @@ class FieldWidgetBuilder:
             self._field_definitions[field_def.name] = field_def
             container.compose_add_child(option_list)
             container.compose_add_child(Static("", id=f"error-{field_def.name}", classes="error-text hidden"))
+        elif field_def.field_type == FieldType.PASSWORD:
+            value = self._get_field_value(field_def.name) or field_def.default
+            input_widget = Input(
+                value=value,
+                placeholder=field_def.placeholder,
+                id=field_id,
+                password=True,
+            )
+            self._field_widgets[field_def.name] = input_widget
+            self._field_definitions[field_def.name] = field_def
+
+            password_row = Horizontal(classes="password-field-row")
+            password_row.compose_add_child(input_widget)
+            toggle_btn = Button(
+                "Show",
+                id=f"toggle-password-{field_def.name}",
+                classes="password-toggle-button",
+            )
+            password_row.compose_add_child(toggle_btn)
+            container.compose_add_child(password_row)
+            container.compose_add_child(Static("", id=f"error-{field_def.name}", classes="error-text hidden"))
         elif field_def.field_type in (FieldType.FILE, FieldType.DIRECTORY):
             value = self._get_field_value(field_def.name) or field_def.default
             input_widget = Input(
