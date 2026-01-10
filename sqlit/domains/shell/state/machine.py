@@ -23,11 +23,13 @@ from sqlit.core.state_base import (
 from sqlit.domains.explorer.state import (
     TreeFilterActiveState,
     TreeFocusedState,
+    TreeMultiSelectState,
     TreeOnConnectionState,
     TreeOnDatabaseState,
     TreeOnFolderState,
     TreeOnObjectState,
     TreeOnTableState,
+    TreeVisualModeState,
 )
 from sqlit.domains.query.state import (
     AutocompleteActiveState,
@@ -62,6 +64,8 @@ class UIStateMachine:
 
         self.tree_focused = TreeFocusedState(parent=self.main_screen)
         self.tree_filter_active = TreeFilterActiveState(parent=self.main_screen)
+        self.tree_visual_mode = TreeVisualModeState(parent=self.tree_focused)
+        self.tree_multi_select = TreeMultiSelectState(parent=self.tree_focused)
         self.tree_on_connection = TreeOnConnectionState(parent=self.tree_focused)
         self.tree_on_database = TreeOnDatabaseState(parent=self.tree_focused)
         self.tree_on_table = TreeOnTableState(parent=self.tree_focused)
@@ -83,6 +87,8 @@ class UIStateMachine:
             self.modal_active,
             self.leader_pending,
             self.tree_filter_active,  # Before tree_focused (more specific when filter active)
+            self.tree_visual_mode,  # Before multi-select (visual mode takes precedence)
+            self.tree_multi_select,  # Before connection/table/etc when multi-select active
             self.tree_on_connection,
             self.tree_on_database,  # For database nodes (multi-database servers)
             self.tree_on_table,
@@ -252,7 +258,6 @@ class UIStateMachine:
         lines.append(binding("<enter>", "Apply filter"))
         lines.append(binding("<esc>", "Close filter"))
         lines.append(binding("~prefix", "Fuzzy match mode"))
-        lines.append(binding("n/N", "Next/prev match (Results)"))
         lines.append("")
 
         # ═══════════════════════════════════════════════════════════════════

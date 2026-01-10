@@ -119,6 +119,8 @@ class SSMSTUI(
         self.current_ssh_tunnel: Any | None = None
         self.vim_mode: VimMode = VimMode.NORMAL
         self._expanded_paths: set[str] = set()
+        self._selected_connection_names: set[str] = set()
+        self._tree_visual_mode_anchor: str | None = None
         self._leader_pending_menu: str = "leader"
         self._loading_nodes: set[str] = set()
         self._session: ConnectionSession | None = None
@@ -222,6 +224,7 @@ class SSMSTUI(
         """Build a UI-agnostic input context snapshot."""
         tree_node_kind = None
         tree_node_connection_name = None
+        tree_node_connection_selected = False
         try:
             node = self.object_tree.cursor_node
             if node is not None:
@@ -234,6 +237,8 @@ class SSMSTUI(
                     config = getattr(data, "config", None)
                     if config is not None:
                         tree_node_connection_name = config.name
+                        selected = getattr(self, "_selected_connection_names", set())
+                        tree_node_connection_selected = config.name in selected
         except Exception:
             pass
 
@@ -275,6 +280,8 @@ class SSMSTUI(
             leader_pending=self._leader_pending,
             leader_menu=self._leader_pending_menu,
             tree_filter_active=getattr(self, "_tree_filter_visible", False),
+            tree_multi_select_active=bool(getattr(self, "_selected_connection_names", set())),
+            tree_visual_mode_active=getattr(self, "_tree_visual_mode_anchor", None) is not None,
             autocomplete_visible=self._autocomplete_visible,
             results_filter_active=getattr(self, "_results_filter_visible", False),
             value_view_active=self._value_view_active,
@@ -286,6 +293,7 @@ class SSMSTUI(
             current_connection_name=current_connection_name,
             tree_node_kind=tree_node_kind,
             tree_node_connection_name=tree_node_connection_name,
+            tree_node_connection_selected=tree_node_connection_selected,
             last_result_is_error=last_result_is_error,
             has_results=has_results,
             stacked_result_count=stacked_result_count,

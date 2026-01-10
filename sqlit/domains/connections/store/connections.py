@@ -189,11 +189,14 @@ class ConnectionStore(JSONFileStore):
         Args:
             connections: List of ConnectionConfig objects to save.
         """
+        from sqlit.domains.connections.app.persist_utils import build_persist_connections
+
         errors: list[CredentialsStoreError] = []
-        for config in connections:
+        persist_connections = build_persist_connections(connections, self.credentials_service)
+        for config in persist_connections:
             errors.extend(self._save_credentials(config))
 
-        payload = [self._config_to_dict_without_passwords(c) for c in connections]
+        payload = [self._config_to_dict_without_passwords(c) for c in persist_connections]
         self._write_json(self._wrap_connections_payload(payload))
         if errors:
             raise CredentialsPersistError(errors)

@@ -262,11 +262,19 @@ class TreeMixin(TreeSchemaMixin, TreeLabelMixin):
         """Move tree cursor down (vim j)."""
         if self.object_tree.has_focus:
             self.object_tree.action_cursor_down()
+            # Update visual selection if in visual mode
+            update_visual = getattr(self, "_update_visual_selection", None)
+            if callable(update_visual):
+                update_visual()
 
     def action_tree_cursor_up(self: TreeMixinHost) -> None:
         """Move tree cursor up (vim k)."""
         if self.object_tree.has_focus:
             self.object_tree.action_cursor_up()
+            # Update visual selection if in visual mode
+            update_visual = getattr(self, "_update_visual_selection", None)
+            if callable(update_visual):
+                update_visual()
 
     def action_select_table(self: TreeMixinHost) -> None:
         """Generate and execute SELECT query for selected table/view, or show info for indexes/triggers/sequences."""

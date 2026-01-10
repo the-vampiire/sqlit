@@ -6,8 +6,9 @@ from typing import Any
 
 from textual.app import ComposeResult
 from textual.binding import Binding
+from textual.containers import Container, Horizontal
 from textual.screen import ModalScreen
-from textual.widgets import Input, Static
+from textual.widgets import Button, Input, Static
 
 from sqlit.shared.ui.widgets import Dialog
 
@@ -22,6 +23,8 @@ class PasswordInputScreen(ModalScreen):
     BINDINGS = [
         Binding("escape", "cancel", "Cancel", priority=True),
         Binding("enter", "submit", "Submit", show=False),
+        Binding("tab", "focus_next", "Next field", show=False, priority=True),
+        Binding("shift+tab", "focus_prev", "Previous field", show=False, priority=True),
     ]
 
     CSS = """
@@ -70,6 +73,24 @@ class PasswordInputScreen(ModalScreen):
         border: none;
         background-tint: $foreground 5%;
     }
+
+    #password-row {
+        width: 100%;
+        height: 1;
+    }
+
+    #password-row Input {
+        width: 1fr;
+    }
+
+    #password-toggle {
+        width: 6;
+        min-width: 6;
+        height: 1;
+        border: none;
+        margin-left: 1;
+        padding: 0;
+    }
     """
 
     def __init__(
@@ -106,17 +127,20 @@ class PasswordInputScreen(ModalScreen):
         shortcuts: list[tuple[str, str]] = [("Submit", "<enter>"), ("Cancel", "<esc>")]
         with Dialog(id="password-dialog", title=self.title_text, shortcuts=shortcuts):
             yield Static(self.description, id="password-description")
-            from textual.containers import Container
-
             container = Container(id="password-container")
             container.border_title = "Password"
             with container:
-                yield Input(
-                    value="",
-                    placeholder="",
-                    id="password-input",
-                    password=False,
+                row = Horizontal(id="password-row")
+                row.compose_add_child(
+                    Input(
+                        value="",
+                        placeholder="",
+                        id="password-input",
+                        password=True,
+                    )
                 )
+                row.compose_add_child(Button("Show", id="password-toggle"))
+                yield row
 
     def on_mount(self) -> None:
         self.query_one("#password-input", Input).focus()
@@ -130,6 +154,25 @@ class PasswordInputScreen(ModalScreen):
         if event.input.id == "password-input":
             self._log_submit("input_submitted", event.value)
             self.dismiss(event.value)
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        if event.button.id != "password-toggle":
+            return
+        input_widget = self.query_one("#password-input", Input)
+        input_widget.password = not input_widget.password
+        event.button.label = "Hide" if not input_widget.password else "Show"
+        input_widget.focus()
+
+    def action_focus_next(self) -> None:
+        input_widget = self.query_one("#password-input", Input)
+        toggle_btn = self.query_one("#password-toggle", Button)
+        if self.focused is input_widget:
+            toggle_btn.focus()
+        else:
+            input_widget.focus()
+
+    def action_focus_prev(self) -> None:
+        self.action_focus_next()
 
     def on_descendant_focus(self, event: Any) -> None:
         try:

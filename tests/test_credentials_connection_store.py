@@ -235,6 +235,40 @@ class TestConnectionStoreWithCredentials:
         # Existing password should remain in credentials service.
         assert self.creds_service.get_password("conn_a") == "secret_a"
 
+    def test_save_all_does_not_clear_other_passwords_when_loaded_without_credentials(self) -> None:
+        """Regression test: saving edited connections doesn't wipe other stored passwords."""
+        store = self._create_store()
+
+        conn_a = ConnectionConfig(
+            name="conn_a",
+            db_type="postgresql",
+            server="localhost",
+            username="user_a",
+            password="secret_a",
+        )
+        conn_b = ConnectionConfig(
+            name="conn_b",
+            db_type="postgresql",
+            server="localhost",
+            username="user_b",
+            password="secret_b",
+        )
+        store.save_all([conn_a, conn_b])
+
+        # UI startup loads connections without credentials; passwords will be None in list.
+        connections = store.load_all(load_credentials=False)
+        assert len(connections) == 2
+
+        # Simulate editing conn_a without re-entering password.
+        for conn in connections:
+            if conn.name == "conn_a" and conn.tcp_endpoint:
+                conn.tcp_endpoint.host = "db.internal"
+
+        store.save_all(connections)
+
+        # conn_b password should remain in credentials service.
+        assert self.creds_service.get_password("conn_b") == "secret_b"
+
     def test_migration_from_plaintext_preserves_existing_passwords(self) -> None:
         """Test that existing plaintext passwords in JSON are preserved during migration."""
         # Write a config file WITH passwords (simulating old format)

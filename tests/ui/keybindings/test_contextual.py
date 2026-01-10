@@ -94,3 +94,96 @@ class TestContextualKeybindings:
             await pilot.pause()
 
             assert not edit_called
+
+    @pytest.mark.asyncio
+    async def test_visual_mode_selection_and_clear(self):
+        """Visual mode should select connections, escape should exit and clear."""
+        keymap = get_keymap()
+        visual_key = keymap.action("enter_tree_visual_mode")
+        exit_visual_key = keymap.action("exit_tree_visual_mode")
+
+        connections = [create_test_connection("TestDB", "sqlite")]
+        mock_connections = MockConnectionStore(connections)
+        app = _make_app(mock_connections)
+
+        async with app.run_test(size=(100, 35)) as pilot:
+            app.action_focus_explorer()
+            await pilot.pause()
+
+            node = app._find_connection_node_by_name("TestDB")
+            assert node is not None
+            app.object_tree.move_cursor(node)
+            await pilot.pause()
+
+            assert not app._selected_connection_names
+            assert app._tree_visual_mode_anchor is None
+
+            # Enter visual mode - selects current connection
+            await pilot.press(visual_key)
+            await pilot.pause()
+            assert "TestDB" in app._selected_connection_names
+            assert app._tree_visual_mode_anchor == "TestDB"
+
+            # Exit visual mode - clears selection
+            await pilot.press(exit_visual_key)
+            await pilot.pause()
+            assert not app._selected_connection_names
+            assert app._tree_visual_mode_anchor is None
+
+    @pytest.mark.asyncio
+    async def test_cursor_stays_on_connection_in_folder_after_connect(self):
+        """Cursor should stay on connection node after connecting to a connection in a folder."""
+        # Create connections in different folders
+        connections = [
+            create_test_connection("DB1", "sqlite", folder_path="Folder1"),
+            create_test_connection("DB2", "sqlite", folder_path="Folder2"),
+            create_test_connection("TargetDB", "sqlite", folder_path="Folder3"),
+        ]
+        mock_connections = MockConnectionStore(connections)
+        app = _make_app(mock_connections)
+
+        async with app.run_test(size=(100, 35)) as pilot:
+            app.action_focus_explorer()
+            await pilot.pause()
+
+            # Find and expand Folder3
+            folder_node = None
+            for child in app.object_tree.root.children:
+                data = getattr(child, "data", None)
+                if data and getattr(data, "name", None) == "Folder3":
+                    folder_node = child
+                    break
+            assert folder_node is not None, "Folder3 not found"
+            folder_node.expand()
+            await pilot.pause()
+
+            # Find TargetDB connection node inside Folder3
+            target_node = app._find_connection_node_by_name("TargetDB")
+            assert target_node is not None, "TargetDB connection not found"
+
+            # Move cursor to TargetDB
+            app.object_tree.move_cursor(target_node)
+            await pilot.pause()
+
+            # Verify cursor is on TargetDB
+            cursor_node = app.object_tree.cursor_node
+            assert cursor_node is not None
+            cursor_config = app._get_connection_config_from_node(cursor_node)
+            assert cursor_config is not None
+            assert cursor_config.name == "TargetDB"
+
+            # Press Enter to connect (this triggers tree refresh)
+            await pilot.press("enter")
+            # Wait for connection and tree refresh
+            await pilot.pause()
+            await pilot.pause()
+            await pilot.pause()
+
+            # Verify cursor is still on TargetDB after the tree refresh
+            cursor_node_after = app.object_tree.cursor_node
+            assert cursor_node_after is not None, "Cursor node is None after connect"
+            cursor_config_after = app._get_connection_config_from_node(cursor_node_after)
+            assert cursor_config_after is not None, "Cursor is not on a connection node"
+            assert cursor_config_after.name == "TargetDB", (
+                f"Cursor moved to {cursor_config_after.name} instead of staying on TargetDB"
+            )

@@ -18,6 +18,7 @@ class TreeFocusedState(State):
         self.allows("tree_cursor_down")  # vim j
         self.allows("tree_cursor_up")  # vim k
         self.allows("tree_filter", help="Filter items")
+        self.allows("enter_tree_visual_mode", label="Visual", help="Enter visual selection mode")
 
     def is_active(self, app: InputContext) -> bool:
         return app.focus == "explorer" and not app.tree_filter_active

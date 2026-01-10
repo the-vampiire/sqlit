@@ -12,6 +12,8 @@ def get_binding_contexts(ctx: InputContext) -> set[str]:
 
     if ctx.focus == "explorer":
         contexts.add("tree")
+    if ctx.tree_visual_mode_active:
+        contexts.add("tree_visual")
     if ctx.tree_filter_active:
         contexts.add("tree_filter")
 

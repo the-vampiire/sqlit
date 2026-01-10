@@ -11,6 +11,17 @@ from sqlit.shared.ui.protocols import TreeMixinHost
 from sqlit.shared.ui.spinner import SPINNER_FRAMES
 
 
+def _dim_color(hex_color: str, factor: float = 0.3) -> str:
+    """Dim a hex color by reducing its brightness."""
+    hex_color = hex_color.lstrip("#")
+    if len(hex_color) != 6:
+        return f"#{hex_color}"
+    r = int(int(hex_color[0:2], 16) * factor)
+    g = int(int(hex_color[2:4], 16) * factor)
+    b = int(int(hex_color[4:6], 16) * factor)
+    return f"#{r:02x}{g:02x}{b:02x}"
+
+
 class TreeLabelMixin:
     """Mixin providing connection label helpers."""
 
@@ -23,15 +34,32 @@ class TreeLabelMixin:
         db_type_label = self._db_type_badge(conn.db_type)
         escaped_name = escape_markup(conn.name)
         source_emoji = conn.get_source_emoji()
+        selected = getattr(self, "_selected_connection_names", set())
+        is_selected = getattr(conn, "name", None) in selected
+        favorite_prefix = "[bright_yellow]*[/] " if getattr(conn, "favorite", False) else ""
 
         if status == "connected":
-            return f"[#4ADE80]* {source_emoji}{escaped_name}[/] [{db_type_label}] ({display_info})"
-        if status == "connecting":
-            frame = spinner or SPINNER_FRAMES[0]
-            return (
-                f"[#FBBF24]{frame}[/] {source_emoji}{escaped_name} [dim italic]Connecting...[/]"
+            label = (
+                f"{favorite_prefix}[#4ADE80]• {source_emoji}{escaped_name}[/]"
+                f" [{db_type_label}] ({display_info})"
             )
-        return f"{source_emoji}[dim]{escaped_name}[/dim] [{db_type_label}] ({display_info})"
+        elif status == "connecting":
+            frame = spinner or SPINNER_FRAMES[0]
+            label = (
+                f"{favorite_prefix}[#FBBF24]{frame}[/] {source_emoji}{escaped_name}"
+                " [dim italic]Connecting...[/]"
+            )
+        else:
+            label = (
+                f"{favorite_prefix}{source_emoji}[dim]{escaped_name}[/dim]"
+                f" [{db_type_label}] ({display_info})"
+            )
+
+        if is_selected:
+            primary = getattr(getattr(self, "current_theme", None), "primary", "#7E9CD8")
+            dimmed = _dim_color(primary, 0.5)
+            return f"[on {dimmed}]{label}[/]"
+        return label
 
     def _connect_spinner_frame(self: TreeMixinHost) -> str:
         spinner = getattr(self, "_connect_spinner", None)

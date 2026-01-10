@@ -184,6 +184,24 @@ Tab.has-error {
     width: 1fr;
 }
 
+.password-field-row {
+    width: 100%;
+    height: 1;
+}
+
+.password-field-row Input {
+    width: 1fr;
+}
+
+.password-toggle-button {
+    width: 6;
+    min-width: 6;
+    height: 1;
+    border: none;
+    margin-left: 1;
+    padding: 0;
+}
+
 .browse-button {
     width: 5;
     min-width: 5;

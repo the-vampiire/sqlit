@@ -16,6 +16,8 @@ class InputContext:
     leader_pending: bool
     leader_menu: str
     tree_filter_active: bool
+    tree_multi_select_active: bool
+    tree_visual_mode_active: bool
     autocomplete_visible: bool
     results_filter_active: bool
     value_view_active: bool
@@ -27,6 +29,7 @@ class InputContext:
     current_connection_name: str | None
     tree_node_kind: str | None
     tree_node_connection_name: str | None
+    tree_node_connection_selected: bool
     last_result_is_error: bool
     has_results: bool
     stacked_result_count: int = 0

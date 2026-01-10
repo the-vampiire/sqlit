@@ -151,6 +151,7 @@ class QueryResultsMixin:
         rows: list[tuple],
         *,
         escape: bool,
+        coerce_to_str_columns: set[int] | None = None,
         start_index: int,
         row_limit: int,
         render_token: int,
@@ -171,6 +172,17 @@ class QueryResultsMixin:
             if end <= index:
                 return
             batch = rows[index:end]
+            if coerce_to_str_columns:
+                coerced: list[tuple] = []
+                for row in batch:
+                    new_row = []
+                    for col_idx, value in enumerate(row):
+                        if col_idx in coerce_to_str_columns and value is not None:
+                            new_row.append(str(value))
+                        else:
+                            new_row.append(value)
+                    coerced.append(tuple(new_row))
+                batch = coerced
             try:
                 table.add_rows(batch)
             except Exception as exc:
@@ -218,26 +230,46 @@ class QueryResultsMixin:
         has_decimal_in_initial = any(
             isinstance(value, Decimal) for row in initial_rows for value in row
         )
-        if has_decimal_in_initial:
-            decimal_types = self._get_decimal_column_types(rows)
-            if decimal_types:
-                from textual_fastdatatable.backend import ArrowBackend
-                import pyarrow as pa
+        coerce_to_str_columns: set[int] | None = None
+        try:
+            if has_decimal_in_initial:
+                decimal_types = self._get_decimal_column_types(rows)
+                if decimal_types:
+                    from textual_fastdatatable.backend import ArrowBackend
+                    import pyarrow as pa
 
-                arrays = []
-                for idx, _name in enumerate(columns):
-                    values = [row[idx] for row in initial_rows] if initial_rows else []
-                    col_type = decimal_types.get(idx)
-                    if col_type is not None:
-                        arrays.append(pa.array(values, type=col_type))
-                    else:
-                        arrays.append(pa.array(values))
-                table_backend = ArrowBackend(pa.Table.from_arrays(arrays, names=columns))
-                table = self._build_results_table(columns, initial_rows, escape=escape, backend=table_backend)
+                    arrays = []
+                    coerce_to_str_columns = set()
+                    for idx, _name in enumerate(columns):
+                        values = [row[idx] for row in initial_rows] if initial_rows else []
+                        col_type = decimal_types.get(idx)
+                        try:
+                            if col_type is not None:
+                                arrays.append(pa.array(values, type=col_type))
+                            else:
+                                arrays.append(pa.array(values))
+                        except (TypeError, ValueError, pa.ArrowInvalid, pa.ArrowTypeError):
+                            coerce_to_str_columns.add(idx)
+                            arrays.append(
+                                pa.array(
+                                    [str(value) if value is not None else None for value in values],
+                                    type=pa.string(),
+                                )
+                            )
+                    table_backend = ArrowBackend(pa.Table.from_arrays(arrays, names=columns))
+                    table = self._build_results_table(columns, initial_rows, escape=escape, backend=table_backend)
+                else:
+                    table = self._build_results_table(columns, initial_rows, escape=escape)
             else:
                 table = self._build_results_table(columns, initial_rows, escape=escape)
-        else:
-            table = self._build_results_table(columns, initial_rows, escape=escape)
+        except Exception as exc:
+            try:
+                self.log.error(f"Results table build failed; falling back to full render: {exc}")
+            except Exception:
+                pass
+            if render_token == getattr(self, "_results_render_token", 0):
+                self._replace_results_table_with_data(columns, rows, escape=escape)
+            return
         if render_token != getattr(self, "_results_render_token", 0):
             return
         self._replace_results_table_with_table(table)
@@ -246,6 +278,7 @@ class QueryResultsMixin:
             columns,
             rows,
             escape=escape,
+            coerce_to_str_columns=coerce_to_str_columns,
             start_index=initial_count,
             row_limit=row_limit,
             render_token=render_token,
